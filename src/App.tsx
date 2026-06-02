@@ -5,6 +5,7 @@ import { BrainDeck } from "./components/BrainDeck";
 import { GateGauntlet } from "./components/GateGauntlet";
 import { ControlDashboard } from "./components/ControlDashboard";
 import { MetricsPanel } from "./components/MetricsPanel";
+import { ExecutionGuideTimeline } from "./components/ExecutionGuideTimeline";
 import { ShieldAlert, Cpu, Terminal, Radio } from "lucide-react";
 
 export default function App() {
@@ -200,6 +201,16 @@ export default function App() {
 
       {/* Primary Cockpit Matrix Grid */}
       <main className="max-w-7xl mx-auto p-4 lg:p-6 space-y-6">
+        
+        {/* Dynamic State Roadmap Execution Timeline */}
+        {state && (
+          <ExecutionGuideTimeline
+            activeTrade={state.activeTrade}
+            lastDecision={state.lastSignalCheck?.decision}
+            brains={state.lastSignalCheck?.brains}
+            tradesLog={state.tradesLog}
+          />
+        )}
         
         {/* Row 1: The 5 Brain Analysers Deck */}
         {state && (

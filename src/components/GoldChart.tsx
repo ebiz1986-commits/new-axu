@@ -265,20 +265,20 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
 
           {/* Horizontal Level Guides and grid coordinates */}
           {gridLines.map((val, i) => (
-            <g key={`hgrid-${i}`} className="opacity-[0.09]">
+            <g key={`hgrid-${i}`} className="opacity-[0.16]">
               <line
                 x1={paddingLeft}
                 y1={getY(val)}
                 x2={width - paddingRight}
                 y2={getY(val)}
-                stroke="#94a3b8"
-                strokeWidth={0.5}
+                stroke="#64748b"
+                strokeWidth={0.7}
               />
               <text
                 x={width - paddingRight + 8}
                 y={getY(val) + 3}
                 fill="#94a3b8"
-                fontSize={9}
+                fontSize={9.5}
                 fontFamily="var(--font-mono)"
                 fontWeight="semibold"
                 className="select-none pointer-events-none"
@@ -293,14 +293,14 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
             if (i % 5 !== 0) return null;
             const x = getX(i);
             return (
-              <g key={`vgrid-${i}`} className="opacity-[0.07]">
+              <g key={`vgrid-${i}`} className="opacity-[0.12]">
                 <line
                   x1={x}
                   y1={paddingTop}
                   x2={x}
                   y2={height - paddingBottom}
-                  stroke="#94a3b8"
-                  strokeWidth={0.5}
+                  stroke="#64748b"
+                  strokeWidth={0.7}
                 />
                 <text
                   x={x}
@@ -309,7 +309,7 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
                   fontSize={8.5}
                   fontFamily="var(--font-mono)"
                   textAnchor="middle"
-                  className="select-none pointer-events-none"
+                  className="select-none pointer-events-none font-bold"
                 >
                   {new Date(c.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </text>
@@ -328,9 +328,9 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
               .join(" ")}
             fill="none"
             stroke="#ea580c"
-            strokeWidth={0.8}
+            strokeWidth={1.2}
             strokeDasharray="2,2"
-            className="opacity-45"
+            className="opacity-60"
           />
 
           {/* EMA Fast (Ribbon 9) */}
@@ -344,8 +344,8 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
               .join(" ")}
             fill="none"
             stroke="#06b6d4"
-            strokeWidth={1.3}
-            className="opacity-80"
+            strokeWidth={2.0}
+            className="opacity-90"
           />
 
           {/* EMA Slow (Ribbon 21) */}
@@ -359,8 +359,8 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
               .join(" ")}
             fill="none"
             stroke="#ec4899"
-            strokeWidth={1.3}
-            className="opacity-80"
+            strokeWidth={2.0}
+            className="opacity-90"
           />
 
           {/* SOLID DYNAMIC RESISTANCE (SELL) LEVEL */}
@@ -670,6 +670,36 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
               >
                 TAKE PROFIT ${activeTrade.tp.toFixed(2)}
               </text>
+
+              {/* Glowing entry marker on the corresponding candlestick */}
+              {visibleCandles.map((c, i) => {
+                const isEntryCandle = Math.abs(c.time - activeTrade.entryTime) < 5 * 60 * 1000;
+                if (!isEntryCandle) return null;
+                const x = getX(i);
+                const y = getY(activeTrade.entryPrice);
+                const isBuy = activeTrade.type === "BUY";
+                return (
+                  <g key={`entry-marker-${i}`} className="animate-bounce">
+                    <circle cx={x} cy={y} r={14} fill={isBuy ? "rgba(16,185,129,0.22)" : "rgba(244,63,94,0.22)"} stroke={isBuy ? "#10b981" : "#f43f5e"} strokeWidth={0.5} />
+                    <circle cx={x} cy={y} r={5} fill={isBuy ? "#10b981" : "#f43f5e"} />
+                    <polygon
+                      points={isBuy ? `${x},${y - 12} ${x - 5},${y - 5} ${x + 5},${y - 5}` : `${x},${y + 12} ${x - 5},${y + 5} ${x + 5},${y + 5}`}
+                      fill={isBuy ? "#10b981" : "#f43f5e"}
+                    />
+                    <text
+                      x={x}
+                      y={isBuy ? y - 18 : y + 22}
+                      fill={isBuy ? "#10b981" : "#f43f5e"}
+                      fontSize={8}
+                      fontWeight="black"
+                      fontFamily="var(--font-mono)"
+                      textAnchor="middle"
+                    >
+                      {activeTrade.type} ENTRY
+                    </text>
+                  </g>
+                );
+              })}
             </g>
           )}
 

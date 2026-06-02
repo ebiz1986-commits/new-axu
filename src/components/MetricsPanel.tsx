@@ -39,7 +39,7 @@ export function MetricsPanel({ balance, equity, unrealizedPnL, tradesLog }: Metr
             <DollarSign className="w-3.5 h-3.5 text-neutral-500" />
           </div>
           <p className="text-xl font-bold font-mono text-neutral-100">${balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-          <div className="text-[10px] text-neutral-500 mt-1">Starting size: $10,000</div>
+          <div className="text-[10px] text-neutral-500 mt-1">Starting size: $50.00</div>
         </div>
 
         {/* Metric 2 */}

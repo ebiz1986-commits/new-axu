@@ -102,9 +102,9 @@ interface BotParams {
 const defaultParams: BotParams = {
   riskPercent: 1.5,
   b1Threshold: 0.65,
-  b2Floor: 6.0,
+  b2Floor: 7.5,
   trailingStopMultiplier: 1.8,
-  partialCloseAtrRatio: 0.7,
+  partialCloseAtrRatio: 1.5,
   lockoutMaxDailyLossPercent: 2.0,
   lockoutMaxWeeklyLossPercent: 5.0,
   newsLockoutWindowMinutes: 2,
@@ -126,6 +126,8 @@ interface Candlestick {
   // indicators
   ema9?: number;
   ema21?: number;
+  ema20?: number;
+  ema50?: number;
   rsi?: number;
   bollingerUpper?: number;
   bollingerMiddle?: number;
@@ -209,11 +211,11 @@ interface SystemState {
 
 // Initial State Database Load
 let state: SystemState = {
-  balance: 10000,
-  startBalance: 10000,
-  dailyStartingBalance: 10000,
-  weeklyStartingBalance: 10000,
-  equity: 10000,
+  balance: 50,
+  startBalance: 50,
+  dailyStartingBalance: 50,
+  weeklyStartingBalance: 50,
+  equity: 50,
   goldPrice: 2345.50,
   tickHistory: [],
   candles: [],
@@ -266,10 +268,10 @@ function loadState() {
     if (fs.existsSync(DB_FILE)) {
       const saved = JSON.parse(fs.readFileSync(DB_FILE, "utf-8"));
       // Restore dynamic items
-      state.balance = saved.balance ?? 10000;
-      state.startBalance = saved.startBalance ?? 10000;
-      state.dailyStartingBalance = saved.dailyStartingBalance ?? 10000;
-      state.weeklyStartingBalance = saved.weeklyStartingBalance ?? 10000;
+      state.balance = saved.balance ?? 50;
+      state.startBalance = saved.startBalance ?? 50;
+      state.dailyStartingBalance = saved.dailyStartingBalance ?? 50;
+      state.weeklyStartingBalance = saved.weeklyStartingBalance ?? 50;
       state.tradesLog = saved.tradesLog ?? [];
       state.params = { ...defaultParams, ...saved.params };
       state.newsEvents = saved.newsEvents ?? state.newsEvents;
@@ -356,6 +358,24 @@ function recalculateIndicators() {
   for (let i = 1; i < candles.length; i++) {
     ema21 = candles[i].close * k21 + ema21 * (1 - k21);
     candles[i].ema21 = ema21;
+  }
+
+  // 2b. EMA 20
+  let ema20 = candles[0].close;
+  const k20 = 2 / (20 + 1);
+  candles[0].ema20 = ema20;
+  for (let i = 1; i < candles.length; i++) {
+    ema20 = candles[i].close * k20 + ema20 * (1 - k20);
+    candles[i].ema20 = ema20;
+  }
+
+  // 2c. EMA 50
+  let ema50 = candles[0].close;
+  const k50 = 2 / (50 + 1);
+  candles[0].ema50 = ema50;
+  for (let i = 1; i < candles.length; i++) {
+    ema50 = candles[i].close * k50 + ema50 * (1 - k50);
+    candles[i].ema50 = ema50;
   }
 
   // 3. RSI 14
@@ -712,6 +732,41 @@ async function evaluateBrains(currentPrice: number): Promise<BrainDecision> {
   };
 }
 
+function findStructureLevels() {
+  const candles = state.candles;
+  const leftWindow = 2;
+  const rightWindow = 2;
+  const supports: number[] = [];
+  const resistances: number[] = [];
+
+  for (let i = leftWindow; i < candles.length - rightWindow; i++) {
+    const currentLow = candles[i].low;
+    const currentHigh = candles[i].high;
+
+    // Check low peak
+    let isMin = true;
+    for (let j = i - leftWindow; j <= i + rightWindow; j++) {
+      if (j !== i && candles[j].low < currentLow) {
+        isMin = false;
+        break;
+      }
+    }
+
+    // Check high peak
+    let isMax = true;
+    for (let j = i - leftWindow; j <= i + rightWindow; j++) {
+      if (j !== i && candles[j].high > currentHigh) {
+        isMax = false;
+        break;
+      }
+    }
+
+    if (isMin) supports.push(currentLow);
+    if (isMax) resistances.push(currentHigh);
+  }
+  return { supports, resistances };
+}
+
 // DECISION SIGNAL FUSION ENGINE - CHECK 10 GOLD GATES
 async function processSignalFusion() {
   const candles = state.candles;
@@ -730,9 +785,15 @@ async function processSignalFusion() {
   const xgboostThreshold = state.params.b1Threshold; // e.g. 0.65
   const xgboostSellLimit = 1 - xgboostThreshold;     // e.g. 0.35
 
-  if (brains.b1_xgboost >= xgboostThreshold && brains.b2_confluence >= state.params.b2Floor && lastCandle.ema9! > lastCandle.ema21!) {
+  if (brains.b1_xgboost >= xgboostThreshold && 
+      brains.b2_confluence >= state.params.b2Floor && 
+      lastCandle.ema9! > lastCandle.ema21! &&
+      lastCandle.ema20! > lastCandle.ema50!) {
     intendedDirection = "BUY";
-  } else if (brains.b1_xgboost <= xgboostSellLimit && brains.b2_confluence >= state.params.b2Floor && lastCandle.ema9! < lastCandle.ema21!) {
+  } else if (brains.b1_xgboost <= xgboostSellLimit && 
+             brains.b2_confluence >= state.params.b2Floor && 
+             lastCandle.ema9! < lastCandle.ema21! &&
+             lastCandle.ema20! < lastCandle.ema50!) {
     intendedDirection = "SELL";
   }
 
@@ -825,47 +886,97 @@ async function processSignalFusion() {
       : `BLOCKED! Daily Loss Lockout active. P&L is $${dailyPnL.toFixed(2)} which exceeded the Max Daily Limit ($${dailyLossLimitDollars.toFixed(2)}).`
   });
 
-  // Gate 7: Consolidation Squeeze / Chop Filter
-  // If bands are squeezed very narrow or RSI is perfectly centered, skip
+  // Gate 7: Consolidation Squeeze / Chop & RSI Exhaustion Filter
+  const atr = lastCandle.atr || 1.5;
   const bbUpper = lastCandle.bollingerUpper || currentPrice + 4;
   const bbLower = lastCandle.bollingerLower || currentPrice - 4;
   const bbSqueezeRatio = (bbUpper - bbLower) / currentPrice;
   const isChopMarket = bbSqueezeRatio < 0.0018 || (lastCandle.rsi! >= 47 && lastCandle.rsi! <= 53);
-  const g7_passed = !isChopMarket;
+  
+  let rsiExhausted = false;
+  let rsiDetail = "";
+  if (intendedDirection === "BUY" && lastCandle.rsi! > 70) {
+    rsiExhausted = true;
+    rsiDetail = `RSI is Overbought (${lastCandle.rsi!.toFixed(1)} > 70). Entering BUY at exhaustion is blocked.`;
+  } else if (intendedDirection === "SELL" && lastCandle.rsi! < 30) {
+    rsiExhausted = true;
+    rsiDetail = `RSI is Oversold (${lastCandle.rsi!.toFixed(1)} < 30). Entering SELL at exhaustion is blocked.`;
+  }
+
+  const g7_passed = !isChopMarket && !rsiExhausted;
   gates.push({
     id: "g7",
-    name: "Chop & Sideways Volatility Filter",
+    name: "Chop, Sideways & RSI Exhaustion Filter",
     passed: g7_passed,
-    detail: g7_passed
-      ? `Band expansion ratio (${(bbSqueezeRatio * 100).toFixed(3)}%) is tradeable.`
-      : `Blocked! Chop filter triggered. XAU/USD in sideways squeeze. Wait for volatility breakout.`
+    detail: !g7_passed
+      ? (rsiExhausted ? `Blocked! ${rsiDetail}` : `Blocked! Chop filter triggered. XAU/USD in sideways squeeze. Wait for volatility breakout.`)
+      : `Band expansion ratio (${(bbSqueezeRatio * 100).toFixed(3)}%) is tradeable. RSI is healthy (${lastCandle.rsi!.toFixed(1)}).`
   });
 
-  // Gate 8: Data-Feed Safety (Simulated source filter block)
-  // Refuses simulation ticks unless user explicitly configures bot override settings
-  const isSourceSimulated = state.simulationMode !== "LIVE";
-  const g8_passed = !isSourceSimulated; // In true live trading we force real; for demo we auto-allow but show indicator!
+  // Gate 8: EMA20 Price Over-Extension Guard
+  const distanceToEMA20 = Math.abs(currentPrice - (lastCandle.ema20 || lastCandle.close));
+  const maxAllowedExtension = 2.5 * atr; // MAX_EXTENSION_ATR = 2.5
+  const isOverExtended = distanceToEMA20 > maxAllowedExtension;
+  const g8_passed = !isOverExtended;
   gates.push({
     id: "g8",
-    name: "Live Feed Health Verification",
-    passed: true, // We show true so they can run demo modes; we output source logs here
-    detail: isSourceSimulated
-      ? `Data pipeline verified: Running in ${state.simulationMode} simulation, auto-approved for interactive training.`
-      : "Data pipeline verified healthy: Sourced from active institutional WebSocket feeds."
+    name: "EMA20 Price Over-Extension Guard",
+    passed: g8_passed,
+    detail: g8_passed
+      ? `Price spot correlation to EMA20 is healthy (Distance: $${distanceToEMA20.toFixed(2)} vs Max Limit: $${maxAllowedExtension.toFixed(2)}).`
+      : `Blocked! Price is over-extended from M5 EMA20 (Distance: $${distanceToEMA20.toFixed(2)} > Max allowed: $${maxAllowedExtension.toFixed(2)}).`
   });
 
-  // Gate 9: Volatility Expansion & Momentum Gate
-  const atr = lastCandle.atr || 1.5;
+  // Gate 9: Volatility Momentum & Entry Quality Structure Gate
   const adx = lastCandle.adx || 20;
   const velocityScore = Math.abs(brains.b0_velocity);
-  const g9_passed = adx >= state.params.adxTrendThreshold || velocityScore > state.params.tickVelocityThreshold;
+  const momentumPassed = adx >= state.params.adxTrendThreshold || velocityScore > state.params.tickVelocityThreshold;
+
+  // Structure detection
+  const { supports, resistances } = findStructureLevels();
+  let nearStructure = false;
+  let nearestLevel = 0;
+  const thresholdDistance = 1.0 * atr;
+
+  if (intendedDirection === "BUY") {
+    const validSupports = supports.filter(s => s <= currentPrice);
+    if (validSupports.length > 0) {
+      const closestSupport = Math.max(...validSupports);
+      nearestLevel = closestSupport;
+      if (currentPrice - closestSupport <= thresholdDistance) {
+        nearStructure = true;
+      }
+    }
+  } else if (intendedDirection === "SELL") {
+    const validResistances = resistances.filter(r => r >= currentPrice);
+    if (validResistances.length > 0) {
+      const closestResistance = Math.min(...validResistances);
+      nearestLevel = closestResistance;
+      if (closestResistance - currentPrice <= thresholdDistance) {
+        nearStructure = true;
+      }
+    }
+  }
+
+  // Quality Constraint: Require structure proximity OR premium B2 (score >= 8.5)
+  const strongB2Floor = 8.5;
+  const isHighQualityEntry = nearStructure || brains.b2_confluence >= strongB2Floor;
+  const g9_passed = momentumPassed && isHighQualityEntry;
+  
+  let gate9Detail = "";
+  if (!momentumPassed) {
+    gate9Detail = `Blocked! Stale market momentum. ADX: ${adx.toFixed(1)} limits (requires >=${state.params.adxTrendThreshold} or Tick Velocity).`;
+  } else if (!isHighQualityEntry) {
+    gate9Detail = `Blocked! Entry quality failure. Spot price not near key market pivot (nearest: $${nearestLevel.toFixed(2)}, distance: $${Math.abs(currentPrice - nearestLevel).toFixed(2)}) and B2 score (${brains.b2_confluence}/10) below premium threshold (${strongB2Floor}/10).`;
+  } else {
+    gate9Detail = `Momentum verified! Quality confirmed via ${nearStructure ? `proximity to pivot support/resistance ($${nearestLevel.toFixed(2)})` : `premium technical confluence score (${brains.b2_confluence}/10)`}.`;
+  }
+
   gates.push({
     id: "g9",
-    name: "Explosive Momentum Gateway",
+    name: "Momentum & Market Structure Quality Gateway",
     passed: g9_passed,
-    detail: g9_passed
-      ? `Momentum verified! (ADX: ${adx.toFixed(1)} vs >=${state.params.adxTrendThreshold} or Tick Velocity: ${velocityScore.toFixed(2)}).`
-      : `Blocked! Stale market momentum. ADX: ${adx.toFixed(1)} limits. Requires high speed block expansion.`
+    detail: gate9Detail
   });
 
   // Gate 10: Soft Checks and Sizing Modulation
@@ -925,7 +1036,7 @@ function executeTrade(type: "BUY" | "SELL", price: number, atr: number, sizeMult
   // Gold pricing: $10.00 point change = $1,000 on standard 100oz contract (1 lot)
   // So size = balanceToRisk / (stopDistancePoints * 100)
   let baseQtyLots = balanceToRisk / (stopDistancePoints * 10.0);
-  baseQtyLots = Math.max(0.1, Math.min(5.0, baseQtyLots * sizeMultiplier)); // Lot clamping
+  baseQtyLots = Math.max(0.01, Math.min(5.0, baseQtyLots * sizeMultiplier)); // Lot clamping
 
   const trade: ActiveTrade = {
     id: `trade_${Date.now()}`,
@@ -1014,9 +1125,9 @@ function handleMarketTick() {
       const partialPnLDollars = (partialClosePointsOffset * plMultiplier) / 2.0;
       state.balance += partialPnLDollars; // banking half the profit instantly
 
-      // Half the quantity
+      // Half the quantity, clamp at minimum 0.01 lots
       const originalQty = trade.qty;
-      trade.qty = parseFloat((originalQty / 2.0).toFixed(2));
+      trade.qty = parseFloat(Math.max(0.01, originalQty / 2.0).toFixed(2));
 
       // Move Stop Loss to Break Even (BE)
       trade.sl = trade.entryPrice;
@@ -1258,14 +1369,14 @@ app.post("/api/trigger-news", (req, res) => {
 });
 
 app.post("/api/reset", (req, res) => {
-  state.balance = 10000;
-  state.startBalance = 10000;
-  state.dailyStartingBalance = 10000;
-  state.weeklyStartingBalance = 10000;
-  state.equity = 10000;
+  state.balance = 50;
+  state.startBalance = 50;
+  state.dailyStartingBalance = 50;
+  state.weeklyStartingBalance = 50;
+  state.equity = 50;
   state.activeTrade = null;
   state.tradesLog = [];
-  state.auditLogs = [{ time: Date.now(), type: "SYSTEM", message: "Bot data log wiped. Account balance reset to $10,000." }];
+  state.auditLogs = [{ time: Date.now(), type: "SYSTEM", message: "Bot data log wiped. Account balance reset to $50.00." }];
   state.lastSignalCheck = null;
   generateInitialCandles();
   saveState();
