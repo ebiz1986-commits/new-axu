@@ -35,12 +35,12 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
   const minPrice = Math.min(...prices, price) - 1.5;
   const priceRange = maxPrice - minPrice || 5;
 
-  const width = 800;
-  const height = 360;
-  const paddingLeft = 15;
-  const paddingRight = 75; // wider right for price scale markers
+  const width = 850;
+  const height = 400;
+  const paddingLeft = 30;
+  const paddingRight = 135; // widened for TradingView tags on the right
   const paddingTop = 30;
-  const paddingBottom = 30;
+  const paddingBottom = 40;
 
   const chartWidth = width - paddingLeft - paddingRight;
   const chartHeight = height - paddingTop - paddingBottom;
@@ -55,19 +55,24 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
     return paddingTop + ratio * chartHeight;
   };
 
-  // Generate grid values
+  // Generate grid values (6 lines across)
   const gridCount = 6;
   const gridLines = Array.from({ length: gridCount }).map((_, i) => {
     return minPrice + (i / (gridCount - 1)) * priceRange;
   });
 
-  // Calculate volume scaling parameters
   const maxVolume = Math.max(...visibleCandles.map((c) => c.volume), 1000) || 1000;
 
-  // Active or highlighted candle
+  // Selected or active tick data
+  const latestCandle = visibleCandles[visibleCandles.length - 1];
   const activeCandleIndex = hoverIdx !== null ? hoverIdx : visibleCandles.length - 1;
   const highlightedCandle = visibleCandles[activeCandleIndex];
   const isUp = highlightedCandle ? highlightedCandle.close >= highlightedCandle.open : true;
+
+  // Change calculations (relative to previous candle)
+  const prevCandle = activeCandleIndex > 0 ? visibleCandles[activeCandleIndex - 1] : highlightedCandle;
+  const changeValue = highlightedCandle.close - prevCandle.close;
+  const percentChange = prevCandle.close !== 0 ? (changeValue / prevCandle.close) * 100 : 0;
 
   // DYNAMIC SUPPORT & RESISTANCE (PIVOT POINTS ALGORITHM)
   // Window parameter: 2 candles to each side (5-candle cluster check)
@@ -106,8 +111,9 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
   const supportsBelow = supCandidates.filter((p) => p < price).sort((a, b) => b - a); // descending order
   const resistancesAbove = resCandidates.filter((p) => p > price).sort((a, b) => a - b); // ascending order
 
-  const dynSupportSR = supportsBelow.length > 0 ? supportsBelow[0] : price - 3.20;
-  const dynResistanceSR = resistancesAbove.length > 0 ? resistancesAbove[0] : price + 3.20;
+  // Graceful fallback levels aligned with real market values
+  const dynSupportSR = supportsBelow.length > 0 ? supportsBelow[0] : price - 3.80;
+  const dynResistanceSR = resistancesAbove.length > 0 ? resistancesAbove[0] : price + 3.80;
 
   // Interactive mouse pointer tracker mapping coordinates
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
@@ -128,94 +134,75 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
   };
 
   return (
-    <div className="bg-[#131722] p-5 rounded-2xl border border-neutral-800/80 shadow-2xl relative overflow-hidden select-none hover:border-neutral-700/80 transition-all duration-300">
-      {/* Background Grid Pattern Overlay */}
+    <div className="bg-[#131722] p-4 sm:p-5 rounded-2xl border border-neutral-800 shadow-2xl relative overflow-hidden select-none hover:border-neutral-700/80 transition-all duration-300">
+      {/* Background radial gradient */}
       <div className="absolute inset-0 bg-radial-gradient from-transparent to-[#0e1017] pointer-events-none opacity-40" />
 
-      {/* TradingView Header Panel */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-neutral-800/60 pb-3 mb-4 gap-3 relative z-10">
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <span className="w-2 h-2 rounded-full bg-amber-500 absolute -top-0.5 -left-0.5 animate-ping" />
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 block border-2 border-[#131722]" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-sans font-bold text-neutral-100 text-sm tracking-tight">XAU/USD GOLD</h3>
-              <span className="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20">M1 INTRADAY</span>
+      {/* TradingView Top Controller & Information Bar */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 border-b border-neutral-800/80 pb-4 mb-4 relative z-10">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          {/* Order Block Buttons (Mock TradingView Quick Actions) */}
+          <div className="flex items-center rounded overflow-hidden shadow-md">
+            <button className="bg-[#f23645] hover:bg-[#d92c3a] text-white px-2.5 py-1 text-[11px] font-mono font-bold flex flex-col items-center leading-tight min-w-[70px]">
+              <span className="text-[9px] opacity-75 font-sans font-normal">SELL</span>
+              <span>${(price - 0.1).toFixed(2)}</span>
+            </button>
+            <div className="bg-[#1c2030] text-neutral-400 border-x border-[#131722] px-2 py-1 text-[10px] font-mono font-semibold">
+              20
             </div>
-            <p className="text-[10px] text-neutral-500 font-mono">GOLD SPOT / U.S. DOLLAR • PROFESSIONAL TERMINAL</p>
+            <button className="bg-[#089981] hover:bg-[#07856f] text-white px-2.5 py-1 text-[11px] font-mono font-bold flex flex-col items-center leading-tight min-w-[70px]">
+              <span className="text-[9px] opacity-75 font-sans font-normal">BUY</span>
+              <span>${(price + 0.1).toFixed(2)}</span>
+            </button>
+          </div>
+
+          <div className="h-6 w-[1px] bg-neutral-800 hidden sm:block" />
+
+          {/* Symbol Title & Index Info */}
+          <div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="font-sans font-extrabold text-neutral-100 text-sm tracking-wide">GOLD / U.S. DOLLAR</span>
+              <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-400 border border-neutral-700/50">5 INDEX</span>
+            </div>
+            {/* Labeled OHLC values exact matches to hover */}
+            {highlightedCandle && (
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] font-mono mt-0.5">
+                <span className="text-neutral-500 font-sans">O</span>
+                <span className="text-neutral-300">${highlightedCandle.open.toFixed(2)}</span>
+                <span className="text-neutral-500 font-sans">H</span>
+                <span className="text-neutral-300">${highlightedCandle.high.toFixed(2)}</span>
+                <span className="text-neutral-500 font-sans">L</span>
+                <span className="text-neutral-300">${highlightedCandle.low.toFixed(2)}</span>
+                <span className="text-neutral-500 font-sans">C</span>
+                <span className={isUp ? "text-[#089981]" : "text-[#f23645]"}>${highlightedCandle.close.toFixed(2)}</span>
+                
+                {/* Plus (+) and minus (-) colored offsets */}
+                <span className={changeValue >= 0 ? "text-[#089981] font-bold ml-1" : "text-[#f23645] font-bold ml-1"}>
+                  {changeValue >= 0 ? "+" : ""}{changeValue.toFixed(2)} ({changeValue >= 0 ? "+" : ""}{percentChange.toFixed(2)}%)
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Indicator Color Legend Keys */}
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] font-mono text-neutral-400">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-[#1de9b6]" />
-            <span>EMA 9 <span className="text-neutral-500">(${highlightedCandle?.ema9?.toFixed(2) || "—"})</span></span>
+        {/* Legend Panel */}
+        <div className="flex flex-wrap items-center gap-x-3.5 gap-y-1 text-[10px] font-semibold font-mono text-neutral-400">
+          <div className="flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#06b6d4]" />
+            <span>EMA 9: <span className="text-neutral-200">${latestCandle.ema9?.toFixed(2) || "—"}</span></span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-[#f472b6]" />
-            <span>EMA 21 <span className="text-neutral-500">(${highlightedCandle?.ema21?.toFixed(2) || "—"})</span></span>
+          <div className="flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#ec4899]" />
+            <span>EMA 21: <span className="text-neutral-200">${latestCandle.ema21?.toFixed(2) || "—"}</span></span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-1.5 bg-yellow-500/10 rounded border border-dashed border-yellow-500/30" />
-            <span>Bollinger Bands <span className="text-neutral-500">(${highlightedCandle?.bollingerMiddle?.toFixed(1) || "—"})</span></span>
+          <div className="flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded bg-amber-500/10 border border-[#ea580c]/45" />
+            <span>BOLLINGER: <span className="text-neutral-200">${latestCandle.bollingerMiddle?.toFixed(1) || "—"}</span></span>
           </div>
         </div>
       </div>
 
-      {/* TradingView Instant HUD Parameter Overlay */}
-      {highlightedCandle && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 bg-neutral-900/40 p-2.5 rounded-lg border border-neutral-800/40 text-[11px] font-mono mb-3 relative z-10">
-          <span className="text-neutral-400 select-none">
-            {hoverIdx !== null ? "📊 HOVERED PLOT:" : "🔔 LATEST TICK:"}
-          </span>
-          <span className="text-neutral-500 select-none">TIME:</span>
-          <span className="text-[#e2e8f0]">
-            {new Date(highlightedCandle.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-          </span>
-          
-          <span className="text-neutral-500 select-none">O:</span>
-          <span className={isUp ? "text-green-400 font-bold" : "text-red-400 font-bold"}>
-            ${highlightedCandle.open.toFixed(2)}
-          </span>
-
-          <span className="text-neutral-500 select-none">H:</span>
-          <span className="text-green-400 font-semibold">${highlightedCandle.high.toFixed(2)}</span>
-
-          <span className="text-neutral-500 select-none">L:</span>
-          <span className="text-red-400 font-semibold">${highlightedCandle.low.toFixed(2)}</span>
-
-          <span className="text-neutral-500 select-none">C:</span>
-          <span className={isUp ? "text-green-400 font-bold" : "text-red-400 font-bold"}>
-            ${highlightedCandle.close.toFixed(2)}
-          </span>
-
-          <span className="text-neutral-500 select-none">VOL:</span>
-          <span className="text-blue-400 font-medium">{highlightedCandle.volume}</span>
-
-          {highlightedCandle.rsi && (
-            <>
-              <span className="text-neutral-500 select-none">RSI(14):</span>
-              <span className={highlightedCandle.rsi > 70 ? "text-amber-500 font-bold animate-pulse" : highlightedCandle.rsi < 30 ? "text-sky-400 font-bold animate-pulse" : "text-neutral-300 font-medium"}>
-                {highlightedCandle.rsi.toFixed(1)}
-              </span>
-            </>
-          )}
-
-          {highlightedCandle.adx !== undefined && (
-            <>
-              <span className="text-neutral-500 select-none">ADX:</span>
-              <span className="text-purple-400 font-medium">
-                {highlightedCandle.adx.toFixed(1)}
-              </span>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* SVG Canvas Area */}
+      {/* main SVG Graph Canvas area */}
       <div className="relative">
         <svg
           viewBox={`0 0 ${width} ${height}`}
@@ -223,7 +210,34 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
         >
-          {/* Bollinger Band Outer Shade Channel */}
+          {/* DEFINITIONS FOR GRADIENTS AND PATTERNS */}
+          <defs>
+            <linearGradient id="supportGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#089981" stopOpacity="0.10" />
+              <stop offset="100%" stopColor="#089981" stopOpacity="0.0" />
+            </linearGradient>
+            <linearGradient id="resistanceGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#f23645" stopOpacity="0.0" />
+              <stop offset="100%" stopColor="#f23645" stopOpacity="0.10" />
+            </linearGradient>
+          </defs>
+
+          {/* DYNAMIC WATERMARK TEXT IN CENTER BACKGROUND */}
+          <text
+            x={(width - paddingRight) / 2 + paddingLeft / 2}
+            y={height / 2 + 15}
+            textAnchor="middle"
+            fill="rgba(255, 255, 255, 0.02)"
+            fontSize={90}
+            fontFamily="var(--font-sans)"
+            fontWeight="900"
+            letterSpacing={6}
+            className="pointer-events-none select-none select-all"
+          >
+            XAUUSD
+          </text>
+
+          {/* Bollinger Band Channel Shaded Fill */}
           <path
             d={visibleCandles
               .map((c, i) => {
@@ -243,58 +257,56 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
                   })
               )
               .join(" ") + " Z"}
-            fill="rgba(212,175,55,0.015)"
-            stroke="rgba(212,175,55,0.06)"
-            strokeWidth={0.8}
-            strokeDasharray="2,2"
+            fill="rgba(212,175,55,0.01)"
+            stroke="rgba(212,175,55,0.05)"
+            strokeWidth={0.6}
+            strokeDasharray="1,2"
           />
 
-          {/* DUAL DIRECTION TECHNICAL GRID */}
-          {/* Horizontal Grid lines */}
+          {/* Horizontal Level Guides and grid coordinates */}
           {gridLines.map((val, i) => (
-            <g key={`hgrid-${i}`} className="opacity-[0.14]">
+            <g key={`hgrid-${i}`} className="opacity-[0.09]">
               <line
                 x1={paddingLeft}
                 y1={getY(val)}
                 x2={width - paddingRight}
                 y2={getY(val)}
-                stroke="#475569"
+                stroke="#94a3b8"
                 strokeWidth={0.5}
               />
               <text
                 x={width - paddingRight + 8}
                 y={getY(val) + 3}
                 fill="#94a3b8"
-                fontSize={8.5}
+                fontSize={9}
                 fontFamily="var(--font-mono)"
                 fontWeight="semibold"
-                className="text-right select-none pointer-events-none"
+                className="select-none pointer-events-none"
               >
-                ${val.toFixed(2)}
+                {val.toFixed(2)}
               </text>
             </g>
           ))}
 
-          {/* Vertical Grid lines for every 4th candle index */}
+          {/* Vertical grid dates alignment */}
           {visibleCandles.map((c, i) => {
-            if (i % 4 !== 0) return null;
+            if (i % 5 !== 0) return null;
             const x = getX(i);
             return (
-              <g key={`vgrid-${i}`} className="opacity-[0.11]">
+              <g key={`vgrid-${i}`} className="opacity-[0.07]">
                 <line
                   x1={x}
                   y1={paddingTop}
                   x2={x}
                   y2={height - paddingBottom}
-                  stroke="#475569"
+                  stroke="#94a3b8"
                   strokeWidth={0.5}
                 />
-                {/* Minor label along X axis bottom */}
                 <text
                   x={x}
-                  y={height - paddingBottom + 13}
+                  y={height - paddingBottom + 14}
                   fill="#94a3b8"
-                  fontSize={8}
+                  fontSize={8.5}
                   fontFamily="var(--font-mono)"
                   textAnchor="middle"
                   className="select-none pointer-events-none"
@@ -305,102 +317,7 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
             );
           })}
 
-          {/* DYNAMIC TRUE SUPPORT AND RESISTANCE PILLARS */}
-          {/* 🛡️ True Support Pillar */}
-          <g>
-            <line
-              x1={paddingLeft}
-              y1={getY(dynSupportSR)}
-              x2={width - paddingRight}
-              y2={getY(dynSupportSR)}
-              stroke="#22c55e"
-              strokeWidth={0.8}
-              strokeDasharray="4,4"
-              className="opacity-40"
-            />
-            <rect
-              x={paddingLeft + 5}
-              y={getY(dynSupportSR) - 7}
-              width={105}
-              height={14}
-              rx={2}
-              fill="#14532d"
-              stroke="#22c55e"
-              strokeWidth={0.5}
-              className="opacity-75"
-            />
-            <text
-              x={paddingLeft + 57}
-              y={getY(dynSupportSR) + 3}
-              fill="#4ade80"
-              fontFamily="var(--font-mono)"
-              fontSize={8}
-              fontWeight="bold"
-              textAnchor="middle"
-            >
-              SUPPORT: ${dynSupportSR.toFixed(2)}
-            </text>
-          </g>
-
-          {/* 🎯 True Resistance Pillar */}
-          <g>
-            <line
-              x1={paddingLeft}
-              y1={getY(dynResistanceSR)}
-              x2={width - paddingRight}
-              y2={getY(dynResistanceSR)}
-              stroke="#ef4444"
-              strokeWidth={0.8}
-              strokeDasharray="4,4"
-              className="opacity-40"
-            />
-            <rect
-              x={paddingLeft + 5}
-              y={getY(dynResistanceSR) - 7}
-              width={115}
-              height={14}
-              rx={2}
-              fill="#7f1d1d"
-              stroke="#ef4444"
-              strokeWidth={0.5}
-              className="opacity-75"
-            />
-            <text
-              x={paddingLeft + 62}
-              y={getY(dynResistanceSR) + 3}
-              fill="#faca9c"
-              fontFamily="var(--font-mono)"
-              fontSize={8}
-              fontWeight="bold"
-              textAnchor="middle"
-            >
-              RESISTANCE: ${dynResistanceSR.toFixed(2)}
-            </text>
-          </g>
-
-          {/* TRADINGVIEW VOLUME HISTOGRAM AT LOWER OVERLAY */}
-          {visibleCandles.map((c, i) => {
-            const x = getX(i);
-            const volHeight = (c.volume / maxVolume) * (chartHeight * 0.15); // maximum 15% of grid height
-            const yVol = height - paddingBottom - volHeight;
-            const isBullGroup = c.close >= c.open;
-            const fillCol = isBullGroup ? "rgba(34,197,94,0.14)" : "rgba(239,68,68,0.14)";
-            const strokeCol = isBullGroup ? "rgba(34,197,94,0.22)" : "rgba(239,68,68,0.22)";
-            return (
-              <rect
-                key={`volbar-${i}`}
-                x={x - 4}
-                y={yVol}
-                width={8}
-                height={volHeight}
-                fill={fillCol}
-                stroke={strokeCol}
-                strokeWidth={0.5}
-              />
-            );
-          })}
-
-          {/* Bollinger Middle Band (Orange SMA-20 Line) */}
+          {/* Bollinger Middle Band */}
           <path
             d={visibleCandles
               .map((c, i) => {
@@ -413,10 +330,10 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
             stroke="#ea580c"
             strokeWidth={0.8}
             strokeDasharray="2,2"
-            className="opacity-60"
+            className="opacity-45"
           />
 
-          {/* EMA 9 (Teal Ribbon) */}
+          {/* EMA Fast (Ribbon 9) */}
           <path
             d={visibleCandles
               .map((c, i) => {
@@ -427,11 +344,11 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
               .join(" ")}
             fill="none"
             stroke="#06b6d4"
-            strokeWidth={1.5}
-            className="opacity-90"
+            strokeWidth={1.3}
+            className="opacity-80"
           />
 
-          {/* EMA 21 (Pink Ribbon) */}
+          {/* EMA Slow (Ribbon 21) */}
           <path
             d={visibleCandles
               .map((c, i) => {
@@ -442,9 +359,119 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
               .join(" ")}
             fill="none"
             stroke="#ec4899"
-            strokeWidth={1.5}
-            className="opacity-95"
+            strokeWidth={1.3}
+            className="opacity-80"
           />
+
+          {/* SOLID DYNAMIC RESISTANCE (SELL) LEVEL */}
+          {/* Fills a subtle red band upwards and draws a solid red line all the way to the right with label tags */}
+          <g>
+            {/* Shading upward */}
+            <rect
+              x={paddingLeft}
+              y={paddingTop}
+              width={chartWidth}
+              height={Math.max(1, getY(dynResistanceSR) - paddingTop)}
+              fill="url(#resistanceGradient)"
+              className="pointer-events-none"
+            />
+            {/* Solid Line */}
+            <line
+              x1={paddingLeft}
+              y1={getY(dynResistanceSR)}
+              x2={width - paddingRight}
+              y2={getY(dynResistanceSR)}
+              stroke="#f23645"
+              strokeWidth={1.5}
+            />
+            {/* Tag right axis tag: "RESISTANCE (SELL) 4,534.22" */}
+            <path
+              d={`M ${width - paddingRight} ${getY(dynResistanceSR)} 
+                  L ${width - paddingRight + 5} ${getY(dynResistanceSR) - 9} 
+                  L ${width - paddingRight + 120} ${getY(dynResistanceSR) - 9} 
+                  L ${width - paddingRight + 120} ${getY(dynResistanceSR) + 9} 
+                  L ${width - paddingRight + 5} ${getY(dynResistanceSR) + 9} Z`}
+              fill="#f23645"
+            />
+            <text
+              x={width - paddingRight + 62}
+              y={getY(dynResistanceSR) + 3.5}
+              fill="#ffffff"
+              fontFamily="var(--font-sans)"
+              fontSize={8.5}
+              fontWeight="900"
+              textAnchor="middle"
+              className="select-none pointer-events-none tracking-tight"
+            >
+              RESISTANCE (SELL) {dynResistanceSR.toFixed(2)}
+            </text>
+          </g>
+
+          {/* SOLID DYNAMIC SUPPORT (BUY) LEVEL */}
+          {/* Fills a subtle green/teal band downwards and draws a solid teal line with tag labels */}
+          <g>
+            {/* Shading downward */}
+            <rect
+              x={paddingLeft}
+              y={getY(dynSupportSR)}
+              width={chartWidth}
+              height={Math.max(1, height - paddingBottom - getY(dynSupportSR))}
+              fill="url(#supportGradient)"
+              className="pointer-events-none"
+            />
+            {/* Solid Line */}
+            <line
+              x1={paddingLeft}
+              y1={getY(dynSupportSR)}
+              x2={width - paddingRight}
+              y2={getY(dynSupportSR)}
+              stroke="#089981"
+              strokeWidth={1.5}
+            />
+            {/* Tag right axis tag: "SUPPORT (BUY) 4,526.22" */}
+            <path
+              d={`M ${width - paddingRight} ${getY(dynSupportSR)} 
+                  L ${width - paddingRight + 5} ${getY(dynSupportSR) - 9} 
+                  L ${width - paddingRight + 120} ${getY(dynSupportSR) - 9} 
+                  L ${width - paddingRight + 120} ${getY(dynSupportSR) + 9} 
+                  L ${width - paddingRight + 5} ${getY(dynSupportSR) + 9} Z`}
+              fill="#089981"
+            />
+            <text
+              x={width - paddingRight + 62}
+              y={getY(dynSupportSR) + 3.5}
+              fill="#ffffff"
+              fontFamily="var(--font-sans)"
+              fontSize={8.5}
+              fontWeight="900"
+              textAnchor="middle"
+              className="select-none pointer-events-none tracking-tight"
+            >
+              SUPPORT (BUY) {dynSupportSR.toFixed(2)}
+            </text>
+          </g>
+
+          {/* TRADINGVIEW VOLUME BARS LOWER OVERLAY */}
+          {visibleCandles.map((c, i) => {
+            const x = getX(i);
+            const volHeight = (c.volume / maxVolume) * (chartHeight * 0.12);
+            const yVol = height - paddingBottom - volHeight;
+            const isBullGroup = c.close >= c.open;
+            const fillCol = isBullGroup ? "rgba(8,153,129,0.12)" : "rgba(242,54,69,0.12)";
+            const strokeCol = isBullGroup ? "rgba(8,153,129,0.22)" : "rgba(242,54,69,0.22)";
+            return (
+              <rect
+                key={`volbar-${i}`}
+                x={x - 2.5}
+                y={yVol}
+                width={5}
+                height={volHeight}
+                fill={fillCol}
+                stroke={strokeCol}
+                strokeWidth={0.4}
+              />
+            );
+          })}
 
           {/* HIGH-FIDELITY CANDLESTICK TILES */}
           {visibleCandles.map((c, i) => {
@@ -455,16 +482,23 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
             const yLow = getY(c.low);
 
             const isBullish = c.close >= c.open;
-            // Precise design colors for Tradingview look
+            // TradingView specific candle color scheme
             const strokeColor = isBullish ? "#089981" : "#f23645";
             const bodyColor = isBullish ? "#089981" : "#f23645";
-            const bodyWidth = 7;
+            const bodyWidth = 6;
 
             return (
               <g key={`candle-${i}`}>
-                {/* Wick shadow */}
-                <line x1={x} y1={yHigh} x2={x} y2={yLow} stroke={strokeColor} strokeWidth={1.2} />
-                {/* Full body */}
+                {/* High/Low Shadow Wick */}
+                <line
+                  x1={x}
+                  y1={yHigh}
+                  x2={x}
+                  y2={yLow}
+                  stroke={strokeColor}
+                  strokeWidth={1.2}
+                />
+                {/* Body Column */}
                 <rect
                   x={x - bodyWidth / 2}
                   y={Math.min(yOpen, yClose)}
@@ -473,159 +507,176 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
                   fill={bodyColor}
                   stroke={strokeColor}
                   strokeWidth={0.5}
-                  rx={0.5}
                 />
               </g>
             );
           })}
 
-          {/* LIVE GOLD WATERMARK PRICE LINE */}
+          {/* DOTTED CURRENT LIVE PRICE LINE WITH PRICE LABELS */}
           <g>
             <line
               x1={paddingLeft}
               y1={getY(price)}
               x2={width - paddingRight}
               y2={getY(price)}
-              stroke="#ffb000"
+              stroke="#00bcd4"
               strokeWidth={1.2}
-              strokeDasharray="3,1"
-              className="animate-pulse"
+              strokeDasharray="3,2"
             />
-            {/* Price badge right axis */}
+            {/* Price right badge - Cyan styled */}
             <rect
               x={width - paddingRight + 4}
               y={getY(price) - 8}
-              width={70}
+              width={75}
               height={16}
-              rx={2}
-              fill="#ea580c"
+              rx={1.5}
+              fill="#00bcd4"
               className="animate-pulse"
             />
             <text
-              x={width - paddingRight + 39}
+              x={width - paddingRight + 41.5}
               y={getY(price) + 4}
-              fill="#fff"
+              fill="#081015"
               fontFamily="var(--font-mono)"
-              fontSize={8.5}
-              fontWeight="bold"
+              fontSize={9}
+              fontWeight="900"
               textAnchor="middle"
             >
               ${price.toFixed(2)}
             </text>
           </g>
 
-          {/* ACTIVE POSITION TRIGGER LEVELS AND TRADING PATHWAYS */}
+          {/* BOUNDARY DIVIDING LINES (AXIS FRAME) */}
+          <line
+            x1={width - paddingRight}
+            y1={paddingTop}
+            x2={width - paddingRight}
+            y2={height - paddingBottom}
+            stroke="#94a3b8"
+            strokeWidth={0.8}
+            className="opacity-[0.2]"
+          />
+          <line
+            x1={paddingLeft}
+            y1={height - paddingBottom}
+            x2={width - paddingRight}
+            y2={height - paddingBottom}
+            stroke="#94a3b8"
+            strokeWidth={0.8}
+            className="opacity-[0.2]"
+          />
+
+          {/* ACTIVE POSITION TRIGGER ROUTES FOR ONGOING ORDERS */}
           {activeTrade && (
             <g>
-              {/* Position shading (Green band for profit, red band for loss) */}
+              {/* Target profitability shading */}
               <rect
                 x={paddingLeft}
                 y={Math.min(getY(activeTrade.entryPrice), getY(price))}
                 width={chartWidth}
                 height={Math.max(1, Math.abs(getY(activeTrade.entryPrice) - getY(price)))}
-                fill={activeTrade.unrealizedPl >= 0 ? "rgba(34,197,94,0.025)" : "rgba(239,68,68,0.025)"}
-                className="transition-all duration-300"
+                fill={activeTrade.unrealizedPl >= 0 ? "rgba(8,153,129,0.03)" : "rgba(242,54,69,0.03)"}
               />
 
-              {/* ENTRY LEVEL AT TARGET */}
+              {/* Entry level dashed path */}
               <line
                 x1={paddingLeft}
                 y1={getY(activeTrade.entryPrice)}
                 x2={width - paddingRight}
                 y2={getY(activeTrade.entryPrice)}
-                stroke="#06b6d4"
-                strokeWidth={1.2}
+                stroke="#38bdf8"
+                strokeWidth={1.0}
                 strokeDasharray="4,2"
               />
               <rect
-                x={paddingLeft + 4}
-                y={getY(activeTrade.entryPrice) - 15}
-                width={80}
-                height={12}
+                x={paddingLeft + 6}
+                y={getY(activeTrade.entryPrice) - 13}
+                width={85}
+                height={13}
                 rx={1}
-                fill="#0e7490"
-                opacity={0.85}
+                fill="#0369a1"
+                opacity={0.9}
               />
               <text
-                x={paddingLeft + 44}
-                y={getY(activeTrade.entryPrice) - 6}
-                fill="#fff"
+                x={paddingLeft + 48.5}
+                y={getY(activeTrade.entryPrice) - 4}
+                fill="#ffffff"
                 fontFamily="var(--font-mono)"
-                fontSize={7.5}
+                fontSize={8}
                 fontWeight="bold"
                 textAnchor="middle"
               >
                 ENTRY ${activeTrade.entryPrice.toFixed(2)}
               </text>
 
-              {/* STOP LOSS CHANNELS */}
+              {/* Stop Loss (SL) visual mark */}
               <line
                 x1={paddingLeft}
                 y1={getY(activeTrade.sl)}
                 x2={width - paddingRight}
                 y2={getY(activeTrade.sl)}
                 stroke="#ef4444"
-                strokeWidth={1.2}
-                strokeDasharray="4,4"
+                strokeWidth={1.0}
+                strokeDasharray="3,3"
               />
               <rect
-                x={paddingLeft + 4}
-                y={getY(activeTrade.sl) - 15}
+                x={paddingLeft + 6}
+                y={getY(activeTrade.sl) - 13}
                 width={105}
-                height={12}
+                height={13}
                 rx={1}
                 fill="#991b1b"
-                opacity={0.85}
+                opacity={0.9}
               />
               <text
-                x={paddingLeft + 56}
-                y={getY(activeTrade.sl) - 6}
-                fill="#fff"
+                x={paddingLeft + 58.5}
+                y={getY(activeTrade.sl) - 4}
+                fill="#ffffff"
                 fontFamily="var(--font-mono)"
-                fontSize={7.5}
+                fontSize={8}
                 fontWeight="bold"
                 textAnchor="middle"
               >
                 {activeTrade.stopMovedToBE ? "BREAKEVEN SL" : `STOP LOSS $${activeTrade.sl.toFixed(2)}`}
               </text>
 
-              {/* TAKE PROFIT CHANNELS */}
+              {/* Take Profit (TP) visual mark */}
               <line
                 x1={paddingLeft}
                 y1={getY(activeTrade.tp)}
                 x2={width - paddingRight}
                 y2={getY(activeTrade.tp)}
-                stroke="#22c55e"
-                strokeWidth={1.2}
-                strokeDasharray="4,4"
+                stroke="#10b981"
+                strokeWidth={1.0}
+                strokeDasharray="3,3"
               />
               <rect
-                x={paddingLeft + 4}
-                y={getY(activeTrade.tp) - 15}
+                x={paddingLeft + 6}
+                y={getY(activeTrade.tp) - 13}
                 width={105}
-                height={12}
+                height={13}
                 rx={1}
-                fill="#166534"
-                opacity={0.85}
+                fill="#065f46"
+                opacity={0.9}
               />
               <text
-                x={paddingLeft + 56}
-                y={getY(activeTrade.tp) - 6}
-                fill="#fff"
+                x={paddingLeft + 58.5}
+                y={getY(activeTrade.tp) - 4}
+                fill="#ffffff"
                 fontFamily="var(--font-mono)"
-                fontSize={7.5}
+                fontSize={8}
                 fontWeight="bold"
                 textAnchor="middle"
               >
-                TAKE PROFIT $XAU {activeTrade.tp.toFixed(2)}
+                TAKE PROFIT ${activeTrade.tp.toFixed(2)}
               </text>
             </g>
           )}
 
-          {/* INTERACTIVE TRADINGVIEW RESPONSIVE CROSSHAIR */}
+          {/* TRADINGVIEW CROSSHAIR DOTS */}
           {hoverCoords && hoverIdx !== null && (
             <g>
-              {/* Horizontal crosshair dashed trace */}
+              {/* Horiz line trace */}
               <line
                 x1={paddingLeft}
                 y1={hoverCoords.y}
@@ -636,7 +687,7 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
                 strokeDasharray="4,4"
                 className="opacity-70"
               />
-              {/* Vertical crosshair dashed trace */}
+              {/* Vert line trace */}
               <line
                 x1={getX(hoverIdx)}
                 y1={paddingTop}
@@ -648,62 +699,75 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
                 className="opacity-70"
               />
 
-              {/* Hover coordinate horizontal price axis panel */}
+              {/* Crosshair timeline badge (bottom x-axis) */}
               <rect
-                x={width - paddingRight + 4}
-                y={hoverCoords.y - 8}
-                width={70}
-                height={16}
-                rx={2}
-                fill="#1e293b"
-                stroke="#475569"
-                strokeWidth={0.8}
-              />
-              {/* Hover price calculated value */}
-              <text
-                x={width - paddingRight + 39}
-                y={hoverCoords.y + 4}
-                fill="#38bdf8"
-                fontFamily="var(--font-mono)"
-                fontSize={8.5}
-                fontWeight="bold"
-                textAnchor="middle"
-              >
-                ${(maxPrice - ((hoverCoords.y - paddingTop) / chartHeight) * priceRange).toFixed(2)}
-              </text>
-
-              {/* Hover coordinate vertical timeline bottom panel */}
-              <rect
-                x={getX(hoverIdx) - 28}
+                x={getX(hoverIdx) - 30}
                 y={height - paddingBottom}
-                width={56}
-                height={14}
-                rx={2}
+                width={60}
+                height={15}
+                rx={1.5}
                 fill="#1e293b"
                 stroke="#475569"
                 strokeWidth={0.8}
               />
               <text
                 x={getX(hoverIdx)}
-                y={height - paddingBottom + 10}
+                y={height - paddingBottom + 11}
                 fill="#38bdf8"
                 fontFamily="var(--font-mono)"
-                fontSize={8}
-                fontWeight="bold"
+                fontSize={8.5}
+                fontWeight="extrabold"
                 textAnchor="middle"
               >
-                {new Date(visibleCandles[hoverIdx].time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                {new Date(visibleCandles[hoverIdx].time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </text>
+
+              {/* Crosshair price badge (right Y-axis overlay) */}
+              <rect
+                x={width - paddingRight + 4}
+                y={hoverCoords.y - 8}
+                width={75}
+                height={16}
+                rx={1.5}
+                fill="#1e293b"
+                stroke="#475569"
+                strokeWidth={0.8}
+              />
+              <text
+                x={width - paddingRight + 41.5}
+                y={hoverCoords.y + 4}
+                fill="#38bdf8"
+                fontFamily="var(--font-mono)"
+                fontSize={8.5}
+                fontWeight="extrabold"
+                textAnchor="middle"
+              >
+                ${(maxPrice - ((hoverCoords.y - paddingTop) / chartHeight) * priceRange).toFixed(2)}
               </text>
             </g>
           )}
+
+          {/* UTC Clock bottom right marker */}
+          <text
+            x={width - paddingRight - 5}
+            y={height - paddingBottom + 26}
+            fill="#565f6e"
+            fontFamily="var(--font-mono)"
+            fontSize={9}
+            fontWeight="bold"
+            textAnchor="end"
+            className="select-none pointer-events-none"
+          >
+            {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })} (UTC)
+          </text>
         </svg>
 
-        {/* Legend overlays for direct fast visual indicators */}
+        {/* Floating Order overlay indicators */}
         {activeTrade && (
           <div className="absolute top-16 left-4 bg-[#1e222d]/95 backdrop-blur-md border border-neutral-800/80 text-[11px] py-1.5 px-3 rounded-xl shadow-2xl flex items-center gap-3 font-mono z-20">
             <span className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-              <span className="text-neutral-400 uppercase">POSITION:</span>
+              <span className="text-neutral-400">POSITION:</span>
               <span className={activeTrade.type === "BUY" ? "text-green-400 font-extrabold" : "text-red-400 font-extrabold"}>
                 {activeTrade.type} {activeTrade.qty.toFixed(2)} LOTS
               </span>
@@ -711,7 +775,7 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
             <span className="text-neutral-700">|</span>
             <span className="flex items-center gap-1">
               <span className="text-neutral-400">UNREALIZED P&L:</span>
-              <span className={activeTrade.unrealizedPl >= 0 ? "text-green-400 font-bold" : "text-red-400 font-bold"}>
+              <span className={activeTrade.unrealizedPl >= 0 ? "text-[#089981] font-bold" : "text-[#f23645] font-bold"}>
                 {activeTrade.unrealizedPl >= 0 ? "+" : ""}${activeTrade.unrealizedPl.toFixed(2)}
               </span>
             </span>
