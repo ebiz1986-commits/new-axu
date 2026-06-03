@@ -31,6 +31,7 @@ export function ControlDashboard({
   const [b2, setB2] = useState(params.b2Floor);
   const [newsWindow, setNewsWindow] = useState(params.newsLockoutWindowMinutes);
   const [lockoutDaily, setLockoutDaily] = useState(params.lockoutMaxDailyLossPercent);
+  const [sessionLockoutEnabled, setSessionLockoutEnabled] = useState(params.isSessionLockoutEnabled || false);
 
   // Telegram pipeline states
   const [telegramToken, setTelegramToken] = useState(params.telegramBotToken || "");
@@ -45,7 +46,8 @@ export function ControlDashboard({
     setTelegramToken(params.telegramBotToken || "");
     setTelegramChatId(params.telegramChatId || "");
     setTelegramEnabled(params.isTelegramEnabled || false);
-  }, [params.telegramBotToken, params.telegramChatId, params.isTelegramEnabled]);
+    setSessionLockoutEnabled(params.isSessionLockoutEnabled || false);
+  }, [params.telegramBotToken, params.telegramChatId, params.isTelegramEnabled, params.isSessionLockoutEnabled]);
 
   // News custom events
   const [newsTitle, setNewsTitle] = useState("USD Fed Interest Decision (Simulated)");
@@ -59,6 +61,7 @@ export function ControlDashboard({
       b2Floor: Number(b2),
       newsLockoutWindowMinutes: Number(newsWindow),
       lockoutMaxDailyLossPercent: Number(lockoutDaily),
+      isSessionLockoutEnabled: sessionLockoutEnabled,
     });
     alert("Simulator parameters saved.");
   };
@@ -120,7 +123,7 @@ export function ControlDashboard({
             <label className="text-[10px] font-mono text-neutral-400 font-bold uppercase tracking-widest block mb-2">Preset Scenario</label>
             <div className="grid grid-cols-2 gap-2 text-xs">
               {[
-                { id: "LIVE", label: "Random Live Walk" },
+                { id: "LIVE", label: "🌐 Real-Time Gold Feed" },
                 { id: "TREND_UP", label: "📈 Trend Up (Bull Rush)" },
                 { id: "TREND_DOWN", label: "📉 Trend Down (Waterfall)" },
                 { id: "CHOP", label: "↔️ Sideways Chop" },
@@ -241,15 +244,28 @@ export function ControlDashboard({
                 className="w-full bg-neutral-900 border border-neutral-800 p-2 rounded-lg text-neutral-100 focus:outline-none focus:border-amber-500 font-mono"
               />
             </div>
-            <div className="flex items-end">
-              <button
-                type="submit"
-                className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 py-2.5 px-4 rounded-lg font-bold text-neutral-100 hover:scale-102 hover:shadow-lg transition-all text-xs outline-none"
-              >
-                Apply Parameters
-              </button>
+            <div className="flex flex-col justify-end">
+              <label className="flex items-center gap-2 cursor-pointer bg-neutral-900/65 px-2.5 py-2 rounded-lg border border-neutral-800 hover:border-neutral-700 select-none">
+                <input
+                  type="checkbox"
+                  checked={sessionLockoutEnabled}
+                  onChange={(e) => setSessionLockoutEnabled(e.target.checked)}
+                  className="w-4 h-4 text-purple-500 focus:ring-purple-500 bg-neutral-950 border-neutral-800 rounded cursor-pointer"
+                />
+                <div className="flex flex-col shrink-0">
+                  <span className="text-[9.5px] text-neutral-250 font-bold uppercase tracking-wide">Asian Hour Lock</span>
+                  <span className="text-[8.5px] text-neutral-500">Enable session clock lock</span>
+                </div>
+              </label>
             </div>
           </div>
+
+          <button
+            type="submit"
+            className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 py-2.5 px-4 rounded-lg font-bold text-neutral-100 hover:scale-102 hover:shadow-lg transition-all text-xs outline-none uppercase font-mono tracking-widest mt-2"
+          >
+            Apply Parameters
+          </button>
         </form>
       </div>
 

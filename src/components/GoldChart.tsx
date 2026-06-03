@@ -258,34 +258,23 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
               )
               .join(" ") + " Z"}
             fill="rgba(212,175,55,0.01)"
-            stroke="rgba(212,175,55,0.05)"
+            stroke="rgba(212,175,55,0.04)"
             strokeWidth={0.6}
             strokeDasharray="1,2"
           />
 
-          {/* Horizontal Level Guides and grid coordinates */}
+          {/* Dotted Grid Helper Lines (Inside Plot Area Only to keep numbers pristine) */}
           {gridLines.map((val, i) => (
-            <g key={`hgrid-${i}`} className="opacity-[0.16]">
-              <line
-                x1={paddingLeft}
-                y1={getY(val)}
-                x2={width - paddingRight}
-                y2={getY(val)}
-                stroke="#64748b"
-                strokeWidth={0.7}
-              />
-              <text
-                x={width - paddingRight + 8}
-                y={getY(val) + 3}
-                fill="#94a3b8"
-                fontSize={9.5}
-                fontFamily="var(--font-mono)"
-                fontWeight="semibold"
-                className="select-none pointer-events-none"
-              >
-                {val.toFixed(2)}
-              </text>
-            </g>
+            <line
+              key={`hgrid-line-${i}`}
+              x1={paddingLeft}
+              y1={getY(val)}
+              x2={width - paddingRight}
+              y2={getY(val)}
+              stroke="rgba(148, 163, 184, 0.08)"
+              strokeWidth={0.8}
+              strokeDasharray="3,3"
+            />
           ))}
 
           {/* Vertical grid dates alignment */}
@@ -293,31 +282,32 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
             if (i % 5 !== 0) return null;
             const x = getX(i);
             return (
-              <g key={`vgrid-${i}`} className="opacity-[0.12]">
+              <g key={`vgrid-${i}`}>
                 <line
                   x1={x}
                   y1={paddingTop}
                   x2={x}
                   y2={height - paddingBottom}
-                  stroke="#64748b"
-                  strokeWidth={0.7}
+                  stroke="rgba(148, 163, 184, 0.08)"
+                  strokeWidth={0.8}
+                  strokeDasharray="3,3"
                 />
                 <text
                   x={x}
                   y={height - paddingBottom + 14}
-                  fill="#94a3b8"
+                  fill="#64748b"
                   fontSize={8.5}
                   fontFamily="var(--font-mono)"
                   textAnchor="middle"
                   className="select-none pointer-events-none font-bold"
                 >
-                  {new Date(c.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {new Date(c.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: "Asia/Colombo" })}
                 </text>
               </g>
             );
           })}
 
-          {/* Bollinger Middle Band */}
+          {/* Bollinger Middle Band (Rendered in background) */}
           <path
             d={visibleCandles
               .map((c, i) => {
@@ -344,7 +334,7 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
               .join(" ")}
             fill="none"
             stroke="#06b6d4"
-            strokeWidth={2.0}
+            strokeWidth={1.8}
             className="opacity-90"
           />
 
@@ -359,12 +349,11 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
               .join(" ")}
             fill="none"
             stroke="#ec4899"
-            strokeWidth={2.0}
+            strokeWidth={1.8}
             className="opacity-90"
           />
 
-          {/* SOLID DYNAMIC RESISTANCE (SELL) LEVEL */}
-          {/* Fills a subtle red band upwards and draws a solid red line all the way to the right with label tags */}
+          {/* DYNAMIC SHADING FOR SUPPORT & RESISTANCE (Inside plot only) */}
           <g>
             {/* Shading upward */}
             <rect
@@ -375,7 +364,7 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
               fill="url(#resistanceGradient)"
               className="pointer-events-none"
             />
-            {/* Solid Line */}
+            {/* Solid Resistance line across plot */}
             <line
               x1={paddingLeft}
               y1={getY(dynResistanceSR)}
@@ -384,31 +373,8 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
               stroke="#f23645"
               strokeWidth={1.5}
             />
-            {/* Tag right axis tag: "RESISTANCE (SELL) 4,534.22" */}
-            <path
-              d={`M ${width - paddingRight} ${getY(dynResistanceSR)} 
-                  L ${width - paddingRight + 5} ${getY(dynResistanceSR) - 9} 
-                  L ${width - paddingRight + 120} ${getY(dynResistanceSR) - 9} 
-                  L ${width - paddingRight + 120} ${getY(dynResistanceSR) + 9} 
-                  L ${width - paddingRight + 5} ${getY(dynResistanceSR) + 9} Z`}
-              fill="#f23645"
-            />
-            <text
-              x={width - paddingRight + 62}
-              y={getY(dynResistanceSR) + 3.5}
-              fill="#ffffff"
-              fontFamily="var(--font-sans)"
-              fontSize={8.5}
-              fontWeight="900"
-              textAnchor="middle"
-              className="select-none pointer-events-none tracking-tight"
-            >
-              RESISTANCE (SELL) {dynResistanceSR.toFixed(2)}
-            </text>
           </g>
 
-          {/* SOLID DYNAMIC SUPPORT (BUY) LEVEL */}
-          {/* Fills a subtle green/teal band downwards and draws a solid teal line with tag labels */}
           <g>
             {/* Shading downward */}
             <rect
@@ -419,7 +385,7 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
               fill="url(#supportGradient)"
               className="pointer-events-none"
             />
-            {/* Solid Line */}
+            {/* Solid Support line across plot */}
             <line
               x1={paddingLeft}
               y1={getY(dynSupportSR)}
@@ -428,27 +394,6 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
               stroke="#089981"
               strokeWidth={1.5}
             />
-            {/* Tag right axis tag: "SUPPORT (BUY) 4,526.22" */}
-            <path
-              d={`M ${width - paddingRight} ${getY(dynSupportSR)} 
-                  L ${width - paddingRight + 5} ${getY(dynSupportSR) - 9} 
-                  L ${width - paddingRight + 120} ${getY(dynSupportSR) - 9} 
-                  L ${width - paddingRight + 120} ${getY(dynSupportSR) + 9} 
-                  L ${width - paddingRight + 5} ${getY(dynSupportSR) + 9} Z`}
-              fill="#089981"
-            />
-            <text
-              x={width - paddingRight + 62}
-              y={getY(dynSupportSR) + 3.5}
-              fill="#ffffff"
-              fontFamily="var(--font-sans)"
-              fontSize={8.5}
-              fontWeight="900"
-              textAnchor="middle"
-              className="select-none pointer-events-none tracking-tight"
-            >
-              SUPPORT (BUY) {dynSupportSR.toFixed(2)}
-            </text>
           </g>
 
           {/* TRADINGVIEW VOLUME BARS LOWER OVERLAY */}
@@ -482,7 +427,7 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
             const yLow = getY(c.low);
 
             const isBullish = c.close >= c.open;
-            // TradingView specific candle color scheme
+            // High visibility candle scheme matching TV
             const strokeColor = isBullish ? "#089981" : "#f23645";
             const bodyColor = isBullish ? "#089981" : "#f23645";
             const bodyWidth = 6;
@@ -512,39 +457,272 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
             );
           })}
 
-          {/* DOTTED CURRENT LIVE PRICE LINE WITH PRICE LABELS */}
+          {/* ACTIVE POSITION TRIGGER ROUTES FOR ONGOING ORDERS (Lines across plot) */}
+          {activeTrade && (
+            <g>
+              {/* Target profitability shading */}
+              <rect
+                x={paddingLeft}
+                y={Math.min(getY(activeTrade.entryPrice), getY(price))}
+                width={chartWidth}
+                height={Math.max(1, Math.abs(getY(activeTrade.entryPrice) - getY(price)))}
+                fill={activeTrade.unrealizedPl >= 0 ? "rgba(8,153,129,0.03)" : "rgba(242,54,69,0.03)"}
+              />
+
+              {/* Entry level dashed path */}
+              <line
+                x1={paddingLeft}
+                y1={getY(activeTrade.entryPrice)}
+                x2={width - paddingRight}
+                y2={getY(activeTrade.entryPrice)}
+                stroke="#38bdf8"
+                strokeWidth={1.0}
+                strokeDasharray="4,2"
+              />
+
+              {/* Stop Loss (SL) visual mark */}
+              <line
+                x1={paddingLeft}
+                y1={getY(activeTrade.sl)}
+                x2={width - paddingRight}
+                y2={getY(activeTrade.sl)}
+                stroke="#ef4444"
+                strokeWidth={1.0}
+                strokeDasharray="3,3"
+              />
+
+              {/* Take Profit (TP) visual mark */}
+              <line
+                x1={paddingLeft}
+                y1={getY(activeTrade.tp)}
+                x2={width - paddingRight}
+                y2={getY(activeTrade.tp)}
+                stroke="#10b981"
+                strokeWidth={1.0}
+                strokeDasharray="3,3"
+              />
+
+              {/* Glowing entry marker on the corresponding candlestick */}
+              {visibleCandles.map((c, i) => {
+                const isEntryCandle = Math.abs(c.time - activeTrade.entryTime) < 5 * 60 * 1000;
+                if (!isEntryCandle) return null;
+                const x = getX(i);
+                const y = getY(activeTrade.entryPrice);
+                const isBuy = activeTrade.type === "BUY";
+                return (
+                  <g key={`entry-marker-${i}`} className="animate-bounce">
+                    <circle cx={x} cy={y} r={14} fill={isBuy ? "rgba(16,185,129,0.22)" : "rgba(244,63,94,0.22)"} stroke={isBuy ? "#10b981" : "#f43f5e"} strokeWidth={0.5} />
+                    <circle cx={x} cy={y} r={5} fill={isBuy ? "#10b981" : "#f43f5e"} />
+                    <polygon
+                      points={isBuy ? `${x},${y - 12} ${x - 5},${y - 5} ${x + 5},${y - 5}` : `${x},${y + 12} ${x - 5},${y + 5} ${x + 5},${y + 5}`}
+                      fill={isBuy ? "#10b981" : "#f43f5e"}
+                    />
+                  </g>
+                );
+              })}
+            </g>
+          )}
+
+          {/* DOTTED CURRENT LIVE PRICE LINE (Across Plot Only) */}
+          <line
+            x1={paddingLeft}
+            y1={getY(price)}
+            x2={width - paddingRight}
+            y2={getY(price)}
+            stroke="#00bcd4"
+            strokeWidth={1.2}
+            strokeDasharray="3,2"
+          />
+
+          {/* SOLID SIDEBAR Y-AXIS PANELS BLOCK OVERLAY (TradingView Style)
+              This creates a solid column to stop moving curves, EMA wicks, and indicators from muddling or overlapping numbers */}
+          <rect
+            x={width - paddingRight}
+            y={paddingTop}
+            width={paddingRight}
+            height={chartHeight}
+            fill="#121622"
+            stroke="none"
+          />
+
+          {/* Sidebar vertical axis separator line */}
+          <line
+            x1={width - paddingRight}
+            y1={paddingTop}
+            x2={width - paddingRight}
+            y2={height - paddingBottom}
+            stroke="rgba(148, 163, 184, 0.18)"
+            strokeWidth={1.2}
+          />
+
+          {/* Stable Sidebar Tick values and Price Numbers */}
+          {gridLines.map((val, i) => (
+            <g key={`hgrid-txt-${i}`}>
+              <line
+                x1={width - paddingRight}
+                y1={getY(val)}
+                x2={width - paddingRight + 5}
+                y2={getY(val)}
+                stroke="rgba(148, 163, 184, 0.3)"
+                strokeWidth={1}
+              />
+              <text
+                x={width - paddingRight + 12}
+                y={getY(val) + 3}
+                fill="#cbd5e1"
+                fontSize={10}
+                fontFamily="var(--font-mono)"
+                fontWeight="bold"
+                className="select-none pointer-events-none"
+              >
+                {val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </text>
+            </g>
+          ))}
+
+          {/* Resistance right axis label tag: "RESISTANCE (SELL) 4,495.30" */}
           <g>
-            <line
-              x1={paddingLeft}
-              y1={getY(price)}
-              x2={width - paddingRight}
-              y2={getY(price)}
-              stroke="#00bcd4"
-              strokeWidth={1.2}
-              strokeDasharray="3,2"
-            />
-            {/* Price right badge - Cyan styled */}
             <rect
-              x={width - paddingRight + 4}
-              y={getY(price) - 8}
-              width={75}
-              height={16}
-              rx={1.5}
+              x={width - paddingRight + 2}
+              y={getY(dynResistanceSR) - 9}
+              width={130}
+              height={18}
+              rx={3}
+              fill="#f23645"
+            />
+            <text
+              x={width - paddingRight + 67}
+              y={getY(dynResistanceSR) + 3.5}
+              fill="#ffffff"
+              fontFamily="var(--font-sans)"
+              fontSize={8}
+              fontWeight="900"
+              textAnchor="middle"
+              className="select-none pointer-events-none tracking-tight"
+            >
+              RESISTANCE (SELL) {dynResistanceSR.toFixed(2)}
+            </text>
+          </g>
+
+          {/* Support right axis label tag: "SUPPORT (BUY) 4,487.30" */}
+          <g>
+            <rect
+              x={width - paddingRight + 2}
+              y={getY(dynSupportSR) - 9}
+              width={130}
+              height={18}
+              rx={3}
+              fill="#089981"
+            />
+            <text
+              x={width - paddingRight + 67}
+              y={getY(dynSupportSR) + 3.5}
+              fill="#ffffff"
+              fontFamily="var(--font-sans)"
+              fontSize={8}
+              fontWeight="900"
+              textAnchor="middle"
+              className="select-none pointer-events-none tracking-tight"
+            >
+              SUPPORT (BUY) {dynSupportSR.toFixed(2)}
+            </text>
+          </g>
+
+          {/* Current price label tag on axis strip */}
+          <g>
+            <rect
+              x={width - paddingRight + 2}
+              y={getY(price) - 9}
+              width={130}
+              height={18}
+              rx={3}
               fill="#00bcd4"
               className="animate-pulse"
             />
             <text
-              x={width - paddingRight + 41.5}
-              y={getY(price) + 4}
-              fill="#081015"
-              fontFamily="var(--font-mono)"
-              fontSize={9}
+              x={width - paddingRight + 67}
+              y={getY(price) + 3.5}
+              fill="#071217"
+              fontFamily="var(--font-sans)"
+              fontSize={8.5}
               fontWeight="900"
               textAnchor="middle"
+              className="select-none pointer-events-none tracking-tight"
             >
-              ${price.toFixed(2)}
+              GOLD SPOT ${price.toFixed(2)}
             </text>
           </g>
+
+          {/* Active Order Target Tags on Axis (if active trade exists) */}
+          {activeTrade && (
+            <g>
+              {/* ENTRY tag */}
+              <rect
+                x={width - paddingRight + 2}
+                y={getY(activeTrade.entryPrice) - 8}
+                width={130}
+                height={16}
+                rx={2.5}
+                fill="#0284c7"
+              />
+              <text
+                x={width - paddingRight + 67}
+                y={getY(activeTrade.entryPrice) + 3}
+                fill="#ffffff"
+                fontFamily="var(--font-sans)"
+                fontSize={7.5}
+                fontWeight="900"
+                textAnchor="middle"
+                className="select-none pointer-events-none"
+              >
+                ENTRY ${activeTrade.entryPrice.toFixed(2)}
+              </text>
+
+              {/* SL tag */}
+              <rect
+                x={width - paddingRight + 2}
+                y={getY(activeTrade.sl) - 8}
+                width={130}
+                height={16}
+                rx={2.5}
+                fill="#b91c1c"
+              />
+              <text
+                x={width - paddingRight + 67}
+                y={getY(activeTrade.sl) + 3}
+                fill="#ffffff"
+                fontFamily="var(--font-sans)"
+                fontSize={7.5}
+                fontWeight="900"
+                textAnchor="middle"
+                className="select-none pointer-events-none"
+              >
+                {activeTrade.stopMovedToBE ? "BE STOP LOSS" : `SL $${activeTrade.sl.toFixed(2)}`}
+              </text>
+
+              {/* TP tag */}
+              <rect
+                x={width - paddingRight + 2}
+                y={getY(activeTrade.tp) - 8}
+                width={130}
+                height={16}
+                rx={2.5}
+                fill="#047857"
+              />
+              <text
+                x={width - paddingRight + 67}
+                y={getY(activeTrade.tp) + 3}
+                fill="#ffffff"
+                fontFamily="var(--font-sans)"
+                fontSize={7.5}
+                fontWeight="900"
+                textAnchor="middle"
+                className="select-none pointer-events-none"
+              >
+                TAKE PROFIT ${activeTrade.tp.toFixed(2)}
+              </text>
+            </g>
+          )}
 
           {/* BOUNDARY DIVIDING LINES (AXIS FRAME) */}
           <line
@@ -749,7 +927,7 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
                 fontWeight="extrabold"
                 textAnchor="middle"
               >
-                {new Date(visibleCandles[hoverIdx].time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {new Date(visibleCandles[hoverIdx].time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: "Asia/Colombo" })}
               </text>
 
               {/* Crosshair price badge (right Y-axis overlay) */}
@@ -788,7 +966,7 @@ export function GoldChart({ candles, price, activeTrade }: GoldChartProps) {
             textAnchor="end"
             className="select-none pointer-events-none"
           >
-            {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })} (UTC)
+            {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: "Asia/Colombo" })} (SLST)
           </text>
         </svg>
 

@@ -7,11 +7,13 @@ import { ControlDashboard } from "./components/ControlDashboard";
 import { MetricsPanel } from "./components/MetricsPanel";
 import { ExecutionGuideTimeline } from "./components/ExecutionGuideTimeline";
 import { ShieldAlert, Cpu, Terminal, Radio } from "lucide-react";
+import { motion } from "motion/react";
 
 export default function App() {
   const [state, setState] = useState<BotState | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [consecutiveFailures, setConsecutiveFailures] = useState(0);
 
   const fetchState = async () => {
     try {
@@ -20,9 +22,16 @@ export default function App() {
       const data = await res.json();
       setState(data);
       setErrorMessage("");
+      setConsecutiveFailures(0);
     } catch (err) {
       console.error(err);
-      setErrorMessage("Lost contact with autonomous backend trading engine. Re-establishing socket connection...");
+      setConsecutiveFailures((prev) => {
+        const next = prev + 1;
+        if (next >= 3) {
+          setErrorMessage("Lost contact with autonomous backend trading engine. Re-establishing connection...");
+        }
+        return next;
+      });
     } finally {
       setLoading(false);
     }
@@ -30,8 +39,8 @@ export default function App() {
 
   useEffect(() => {
     fetchState();
-    // Poll the backend simulator at 600ms high frequency interval
-    const t = setInterval(fetchState, 600);
+    // Poll the backend simulator at 1200ms interval for balanced real-time performance and absolute stability
+    const t = setInterval(fetchState, 1200);
     return () => clearInterval(t);
   }, []);
 
@@ -154,7 +163,7 @@ export default function App() {
                 Aegis Gold Autonomous System <span className="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/30 font-mono font-bold py-0.5 px-2 rounded tracking-widest uppercase">AUTOPILOT RUNNING</span>
               </h1>
               <p className="text-[10px] text-neutral-500 font-mono tracking-wide">
-                Simulated Institutional Trading Environment • System Local Time: {new Date().toLocaleTimeString()} UTC
+                Simulated Institutional Trading Environment • Sri Lanka Local Time (SLST): {new Date().toLocaleTimeString("en-US", { timeZone: "Asia/Colombo" })} • System Local Time: {new Date().toLocaleTimeString()} UTC
               </p>
               <div className="flex flex-wrap gap-2 mt-1.5">
                 <span className="text-[9px] text-neutral-500 font-mono flex items-center pr-1 select-none">INTEGRATION STATUS HUD:</span>
@@ -268,6 +277,7 @@ export default function App() {
               lastDecision={state?.lastSignalCheck?.decision}
               lastCheckTime={state?.lastSignalCheck?.time}
               notes={state?.lastSignalCheck?.notes}
+              onRecheck={fetchState}
             />
 
             {/* System Blackbox Logs Console */}
@@ -281,7 +291,7 @@ export default function App() {
                   <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
                 </div>
 
-                <div className="bg-neutral-900/80 rounded-xl p-3 border border-neutral-800/80 font-mono text-[10px] space-y-2 h-[220px] overflow-y-auto scrollbar-thin">
+                <div className="bg-neutral-900/80 rounded-xl p-3 border border-neutral-800/80 font-mono text-[10px] space-y-2 h-[220px] overflow-y-auto scrollbar-thin flex flex-col">
                   {state?.auditLogs && state.auditLogs.length > 0 ? (
                     state.auditLogs.map((log, index) => {
                       const getTypeColor = () => {
@@ -290,12 +300,34 @@ export default function App() {
                         if (log.type === "BRAIN") return "text-purple-400";
                         return "text-cyan-400";
                       };
+
+                      // Generate a stable unique key
+                      const itemKey = `${log.time}-${log.message.slice(0, 30)}`;
+
                       return (
-                        <div key={index} className="border-b border-neutral-950/40 pb-1.5 leading-relaxed text-neutral-300">
-                          <span className="text-neutral-500">[{new Date(log.time).toLocaleTimeString()}]</span>{" "}
-                          <span className={`font-black ${getTypeColor()}`}>[{log.type}]</span>{" "}
-                          <span>{log.message}</span>
-                        </div>
+                        <motion.div
+                          key={itemKey}
+                          layout="position"
+                          initial={{ opacity: 0, y: -10, scale: 0.98 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                          className={`border-b border-neutral-950/40 pb-1.5 leading-relaxed text-neutral-300 flex items-start gap-1 flex-wrap transition-all ${
+                            index === 0
+                              ? "bg-amber-950/20 border-l border-amber-500/50 p-1 rounded-r shadow-[inset_0_0_10px_rgba(245,158,11,0.03)]"
+                              : ""
+                          }`}
+                        >
+                          <span className="text-neutral-500 shrink-0" title="Sri Lanka Standard Time (SLST)">
+                            [{new Date(log.time).toLocaleTimeString("en-US", { timeZone: "Asia/Colombo" })}]
+                          </span>{" "}
+                          <span className={`font-black shrink-0 ${getTypeColor()}`}>[{log.type}]</span>{" "}
+                          <span className="flex-1 min-w-0 break-words">{log.message}</span>
+                          {index === 0 && (
+                            <span className="ml-1 text-[8px] font-mono font-bold bg-amber-500/20 text-amber-400 px-1 py-0.2 rounded border border-amber-500/35 animate-pulse tracking-wide select-none">
+                              LATEST
+                            </span>
+                          )}
+                        </motion.div>
                       );
                     })
                   ) : (
@@ -314,6 +346,7 @@ export default function App() {
             equity={state.equity}
             unrealizedPnL={state.activeTrade ? state.activeTrade.unrealizedPl : 0}
             tradesLog={state.tradesLog}
+            activeTrade={state.activeTrade}
           />
         )}
       </main>

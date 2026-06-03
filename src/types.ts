@@ -12,6 +12,7 @@ export interface BotParams {
   telegramBotToken: string;
   telegramChatId: string;
   isTelegramEnabled: boolean;
+  isSessionLockoutEnabled: boolean;
 }
 
 export interface Candlestick {

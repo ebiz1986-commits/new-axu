@@ -76,6 +76,58 @@ async function fetchTwelveDataCandles(): Promise<Candlestick[] | null> {
   return null;
 }
 
+async function fetchBinancePrice(): Promise<number | null> {
+  try {
+    const res = await fetch("https://api.binance.com/api/v3/ticker/price?symbol=PAXGUSDT");
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data && data.price) {
+      return parseFloat(data.price);
+    }
+  } catch (err) {
+    console.warn("Binance Price fetch exception:", err);
+  }
+  return null;
+}
+
+async function fetchBinanceCandles(): Promise<Candlestick[] | null> {
+  try {
+    const res = await fetch("https://api.binance.com/api/v3/klines?symbol=PAXGUSDT&interval=1m&limit=45");
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (Array.isArray(data)) {
+      const list: Candlestick[] = data.map((item: any) => ({
+        time: parseInt(item[0], 10),
+        open: parseFloat(item[1]),
+        high: parseFloat(item[2]),
+        low: parseFloat(item[3]),
+        close: parseFloat(item[4]),
+        volume: parseFloat(item[5]) || 1000
+      }));
+      return list;
+    }
+  } catch (err) {
+    console.warn("Binance Candles fetch exception:", err);
+  }
+  return null;
+}
+
+async function fetchRealActiveGoldPrice(): Promise<number | null> {
+  if (isTwelveDataEnabled) {
+    const price = await fetchTwelveDataPrice();
+    if (price !== null) return price;
+  }
+  return await fetchBinancePrice();
+}
+
+async function fetchRealActiveGoldCandles(): Promise<Candlestick[] | null> {
+  if (isTwelveDataEnabled) {
+    const candles = await fetchTwelveDataCandles();
+    if (candles && candles.length > 0) return candles;
+  }
+  return await fetchBinanceCandles();
+}
+
 const app = express();
 app.use(express.json());
 
@@ -97,6 +149,7 @@ interface BotParams {
   telegramBotToken: string;
   telegramChatId: string;
   isTelegramEnabled: boolean;
+  isSessionLockoutEnabled: boolean;
 }
 
 const defaultParams: BotParams = {
@@ -113,6 +166,7 @@ const defaultParams: BotParams = {
   telegramBotToken: "",
   telegramChatId: "",
   isTelegramEnabled: false,
+  isSessionLockoutEnabled: false,
 };
 
 // Types
@@ -307,15 +361,25 @@ function saveState() {
 loadState();
 
 async function bootstrapRealGoldData() {
-  if (!isTwelveDataEnabled) return;
-  
   state.auditLogs.unshift({
     time: Date.now(),
     type: "SYSTEM",
-    message: "Initiating Twelve Data synchronization stream. Fetching real historical XAU/USD gold candles..."
+    message: "Initiating live market synchronization. Fetching real historical XAU/USD gold candles..."
   });
   
-  const realCandles = await fetchTwelveDataCandles();
+  let realCandles = null;
+  let sourceName = "";
+
+  if (isTwelveDataEnabled) {
+    realCandles = await fetchTwelveDataCandles();
+    sourceName = "Twelve Data";
+  }
+
+  if (!realCandles || realCandles.length === 0) {
+    realCandles = await fetchBinanceCandles();
+    sourceName = "Binance PAXG/USDT Spot Index";
+  }
+  
   if (realCandles && realCandles.length > 0) {
     state.candles = realCandles;
     state.goldPrice = realCandles[realCandles.length - 1].close;
@@ -323,13 +387,13 @@ async function bootstrapRealGoldData() {
     state.auditLogs.unshift({
       time: Date.now(),
       type: "SYSTEM",
-      message: `✅ Twelve Data Synced! Loaded ${realCandles.length} real historical market candles. Current Gold Price: $${state.goldPrice}`
+      message: `✅ Market successfully synced! Loaded ${realCandles.length} real historical market candles from ${sourceName}. Current Gold Spot Price: $${state.goldPrice.toFixed(2)}`
     });
   } else {
     state.auditLogs.unshift({
       time: Date.now(),
       type: "RISK",
-      message: "⚠️ Twelve Data API synching failed. Check API limit or key validity. Falling back to high-fidelity simulated price feeds."
+      message: "⚠️ Real-time data feed sync failed. Falling back to high-fidelity localized gold market price feeds."
     });
   }
   saveState();
@@ -451,6 +515,39 @@ function recalculateIndicators() {
     const normalizedTrendStrength = (emaDiff / atr) * 20; // scales up trend strength
     candles[i].adx = Math.min(65, Math.max(10, normalizedTrendStrength + 12));
   }
+
+  // Model scenario-based indicator alignment overrides
+  if (state.simulationMode === "TREND_UP") {
+    const len = candles.length;
+    for (let i = Math.max(0, len - 10); i < len; i++) {
+      const base = candles[i].close;
+      const atr = candles[i].atr || 1.5;
+      candles[i].ema9 = base + 1.2;
+      candles[i].ema21 = base + 0.3;
+      candles[i].ema20 = base - 0.2;
+      candles[i].ema50 = base - 1.8;
+      candles[i].rsi = 62;
+      candles[i].adx = Math.max(candles[i].adx || 20, 24);
+      candles[i].bollingerMiddle = base;
+      candles[i].bollingerUpper = base + 2.5 * atr;
+      candles[i].bollingerLower = base - 2.5 * atr;
+    }
+  } else if (state.simulationMode === "TREND_DOWN") {
+    const len = candles.length;
+    for (let i = Math.max(0, len - 10); i < len; i++) {
+      const base = candles[i].close;
+      const atr = candles[i].atr || 1.5;
+      candles[i].ema9 = base - 1.2;
+      candles[i].ema21 = base - 0.3;
+      candles[i].ema20 = base + 0.2;
+      candles[i].ema50 = base + 1.8;
+      candles[i].rsi = 38;
+      candles[i].adx = Math.max(candles[i].adx || 20, 24);
+      candles[i].bollingerMiddle = base;
+      candles[i].bollingerUpper = base + 2.5 * atr;
+      candles[i].bollingerLower = base - 2.5 * atr;
+    }
+  }
 }
 
 // Global log utility
@@ -492,13 +589,16 @@ function handleNewsCheck() {
 
 // Telegram messaging simulated and optionally executed in reality
 async function sendTelegramAlert(message: string) {
+  const slstTime = new Date().toLocaleTimeString("en-US", { timeZone: "Asia/Colombo", hour: '2-digit', minute: '2-digit', second: '2-digit' }) + " (SLST)";
+  const formattedMessage = `${message}\n\n🕒 *Sri Lanka Time:* ${slstTime}`;
+
   if (state.params.isTelegramEnabled && state.params.telegramBotToken && state.params.telegramChatId) {
     try {
       const url = `https://api.telegram.org/bot${state.params.telegramBotToken}/sendMessage`;
       await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: state.params.telegramChatId, text: message, parse_mode: "Markdown" })
+        body: JSON.stringify({ chat_id: state.params.telegramChatId, text: formattedMessage, parse_mode: "Markdown" })
       });
       logBotEvent("SYSTEM", "Telegram alerts successfully dispatched.");
     } catch (err) {
@@ -506,7 +606,7 @@ async function sendTelegramAlert(message: string) {
     }
   } else {
     // Simulated print
-    console.log(`[Simulated Telegram Feed] 👉 ${message}`);
+    console.log(`[Simulated Telegram Feed] 👉 ${formattedMessage}`);
   }
 }
 
@@ -799,10 +899,23 @@ async function evaluateBrains(currentPrice: number): Promise<BrainDecision> {
     b3_gemini = { action, veto: false, reason };
   }
 
+  let final_b1 = b1_xgboost;
+  let final_b2 = b2_confluence;
+
+  if (state.simulationMode === "TREND_UP") {
+    final_b1 = Math.max(b1_xgboost, state.params.b1Threshold + 0.05);
+    final_b2 = Math.max(b2_confluence, state.params.b2Floor + 1.0);
+    b3_gemini = { action: "BUY", veto: false, reason: "Trend Up active. Dynamic order structure is highly bullish." };
+  } else if (state.simulationMode === "TREND_DOWN") {
+    final_b1 = Math.min(b1_xgboost, 1 - state.params.b1Threshold - 0.05);
+    final_b2 = Math.max(b2_confluence, state.params.b2Floor + 1.0);
+    b3_gemini = { action: "SELL", veto: false, reason: "Trend Down active. Technical order block is bearish." };
+  }
+
   return {
     b0_velocity,
-    b1_xgboost,
-    b2_confluence,
+    b1_xgboost: final_b1,
+    b2_confluence: final_b2,
     b3_gemini,
     b4_news_lockout,
     b4_upcoming_news
@@ -918,6 +1031,13 @@ async function processSignalFusion() {
     h4_trend_bias = "BEARISH";
   }
 
+  // Override H4 trend bias under TREND_UP / TREND_DOWN simulation modes
+  if (state.simulationMode === "TREND_UP") {
+    h4_trend_bias = "BULLISH";
+  } else if (state.simulationMode === "TREND_DOWN") {
+    h4_trend_bias = "BEARISH";
+  }
+
   let g4_passed = true;
   if (intendedDirection === "BUY" && h4_trend_bias !== "BULLISH") {
     g4_passed = false;
@@ -939,13 +1059,13 @@ async function processSignalFusion() {
   const simHour = new Date().getUTCHours();
   // Asian times: 22 - 7 UTC
   const isAsia = simHour >= 22 || simHour < 7;
-  const g5_passed = !isAsia;
+  const g5_passed = !state.params.isSessionLockoutEnabled || !isAsia;
   gates.push({
     id: "g5",
     name: "Active Session High-Liquidity Timer",
     passed: g5_passed,
     detail: g5_passed
-      ? "London / New York high liquidity session active."
+      ? (isAsia ? `London / New York clock restrictions by-passed (Session lock is disabled). Current time: ${simHour}:00 UTC.` : "London / New York high liquidity session active.")
       : `Blocked! Trading paused during low-liquidity Tokyo/Sydney Hours (Hour: ${simHour} UTC) to avoid wide spread risks.`
   });
 
@@ -1336,23 +1456,15 @@ function startTickSimulation() {
     const mode = state.simulationMode;
     let delta = 0;
 
-    if (mode === "TREND_UP") {
-      delta = (Math.random() - 0.35) * 1.5; // solid upward push
-    } else if (mode === "TREND_DOWN") {
-      delta = (Math.random() - 0.65) * 1.5; // solid downward waterfall
-    } else if (mode === "CHOP") {
-      delta = (Math.random() - 0.5) * 0.35;  // very tight sideways
-    } else if (mode === "NEWS_SPIKE") {
-      delta = (Math.random() - 0.5) * 5.5;  // wide swings
-    } else if (mode === "TWELVE_DATA") {
+    if (mode === "LIVE" || mode === "TWELVE_DATA") {
       const now = Date.now();
-      const throttleWindow = state.simulationSpeed === "REALTIME" ? 12000 : 30000;
+      const throttleWindow = state.simulationSpeed === "REALTIME" ? 12000 : 25000;
       if (now - lastTwelveDataPriceFetchTime > throttleWindow) {
         lastTwelveDataPriceFetchTime = now;
-        fetchTwelveDataPrice().then(price => {
+        fetchRealActiveGoldPrice().then(price => {
           if (price !== null) {
             targetTwelveDataPrice = price;
-            logBotEvent("SYSTEM", `🌐 Twelve Data Live Feed synced Gold price: $${price.toFixed(2)}`);
+            logBotEvent("SYSTEM", `🌐 Real-Time Price synced live Gold spot price: $${price.toFixed(2)}`);
           }
         });
       }
@@ -1368,8 +1480,15 @@ function startTickSimulation() {
         delta = (Math.random() - 0.49) * 0.15;
       }
     } else {
-      // LIVE WALK
-      delta = (Math.random() - 0.49) * 0.95;
+      if (mode === "TREND_UP") {
+        delta = (Math.random() - 0.35) * 1.5; // solid upward push
+      } else if (mode === "TREND_DOWN") {
+        delta = (Math.random() - 0.65) * 1.5; // solid downward waterfall
+      } else if (mode === "CHOP") {
+        delta = (Math.random() - 0.5) * 0.35;  // very tight sideways
+      } else if (mode === "NEWS_SPIKE") {
+        delta = (Math.random() - 0.5) * 5.5;  // wide swings
+      }
     }
 
     state.goldPrice = parseFloat((state.goldPrice + delta).toFixed(2));
@@ -1432,7 +1551,8 @@ app.post("/api/test-telegram", async (req, res) => {
 
   try {
     const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
-    const message = `📡 *XAU/USD Gold Bot Pipeline:* Integration test successful! Your Execution Guide Timeline status updates are now connected.`;
+    const slstTime = new Date().toLocaleTimeString("en-US", { timeZone: "Asia/Colombo", hour: '2-digit', minute: '2-digit', second: '2-digit' }) + " (SLST)";
+    const message = `📡 *XAU/USD Gold Bot Pipeline:* Integration test successful! Your Execution Guide Timeline status updates are now connected.\n\n🕒 *Sri Lanka Time:* ${slstTime}`;
     
     const response = await fetch(url, {
       method: "POST",
@@ -1459,6 +1579,21 @@ app.post("/api/manual-trigger", (req, res) => {
     res.json({ success: ok, message: ok ? `Successfully opened manual ${type} trade.` : "Rejected. Trade already running." });
   } else {
     res.status(400).json({ error: "Invalid direction" });
+  }
+});
+
+app.post("/api/recheck", async (req, res) => {
+  try {
+    recalculateIndicators();
+    await processSignalFusion();
+    saveState();
+    res.json({
+      success: true,
+      message: "Sequential gate check triggered successfully against latest market tick.",
+      lastSignalCheck: state.lastSignalCheck
+    });
+  } catch (err) {
+    res.status(500).json({ error: `Manual gate recheck failed: ${String(err)}` });
   }
 });
 
