@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { BotParams } from "../types";
-import { Sliders, Zap, Play, Radio, Calendar, Trash2, Ban } from "lucide-react";
+import { Sliders, Zap, Play, Radio, Calendar, Trash2, Ban, Send, Info, Check, HelpCircle, AlertCircle } from "lucide-react";
 
 interface ControlDashboardProps {
   params: BotParams;
@@ -32,6 +32,21 @@ export function ControlDashboard({
   const [newsWindow, setNewsWindow] = useState(params.newsLockoutWindowMinutes);
   const [lockoutDaily, setLockoutDaily] = useState(params.lockoutMaxDailyLossPercent);
 
+  // Telegram pipeline states
+  const [telegramToken, setTelegramToken] = useState(params.telegramBotToken || "");
+  const [telegramChatId, setTelegramChatId] = useState(params.telegramChatId || "");
+  const [telegramEnabled, setTelegramEnabled] = useState(params.isTelegramEnabled || false);
+
+  const [testLoading, setTestLoading] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; msg: string } | null>(null);
+
+  // Sync state whenever parents load/modify parameters
+  useEffect(() => {
+    setTelegramToken(params.telegramBotToken || "");
+    setTelegramChatId(params.telegramChatId || "");
+    setTelegramEnabled(params.isTelegramEnabled || false);
+  }, [params.telegramBotToken, params.telegramChatId, params.isTelegramEnabled]);
+
   // News custom events
   const [newsTitle, setNewsTitle] = useState("USD Fed Interest Decision (Simulated)");
   const [newsImpact, setNewsImpact] = useState<"HIGH" | "MEDIUM">("HIGH");
@@ -48,6 +63,41 @@ export function ControlDashboard({
     alert("Simulator parameters saved.");
   };
 
+  const handleSaveTelegram = async () => {
+    await onUpdateParams({
+      telegramBotToken: telegramToken,
+      telegramChatId: telegramChatId,
+      isTelegramEnabled: telegramEnabled,
+    });
+    alert("Telegram integration settings updated.");
+  };
+
+  const handleTestTelegram = async () => {
+    if (!telegramToken.trim() || !telegramChatId.trim()) {
+      alert("Please enter a valid Telegram Bot Token and Chat ID to run connection checks.");
+      return;
+    }
+    setTestLoading(true);
+    setTestResult(null);
+    try {
+      const response = await fetch("/api/test-telegram", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ botToken: telegramToken, chatId: telegramChatId }),
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setTestResult({ success: true, msg: data.detail });
+      } else {
+        setTestResult({ success: false, msg: data.error || "Delivery failed." });
+      }
+    } catch (err: any) {
+      setTestResult({ success: false, msg: "Connection check failed: " + err.message });
+    } finally {
+      setTestLoading(false);
+    }
+  };
+
   const handleNewsSubmit = async () => {
     if (!newsTitle.trim()) return;
     await onTriggerNews(newsTitle, newsImpact);
@@ -55,7 +105,7 @@ export function ControlDashboard({
   };
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
       {/* 1. Simulation Scenarios & Timings Control Box */}
       <div className="bg-neutral-950/50 p-5 rounded-2xl border border-neutral-800 flex flex-col justify-between">
         <div>
@@ -257,6 +307,104 @@ export function ControlDashboard({
           >
             <Trash2 className="w-3.5 h-3.5" /> Wipe Bot Database & Restarts
           </button>
+        </div>
+      </div>
+
+      {/* 4. Telegram Broadcaster Control Box */}
+      <div className="bg-neutral-950/50 p-5 rounded-2xl border border-neutral-800 flex flex-col justify-between">
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <Send className="text-sky-400 w-5 h-5" />
+            <h3 className="font-display font-black text-neutral-100 text-sm tracking-tight uppercase">Telegram Broadcaster</h3>
+          </div>
+          <p className="text-xs text-neutral-400 mb-4">
+            Route real-time Execution Guide Timeline phases, lot details, and TP/SL limits directly to your Telegram channel!
+          </p>
+
+          <div className="space-y-3.5 text-xs">
+            {/* Token entry */}
+            <div>
+              <label className="text-[10px] font-mono text-neutral-400 block mb-1 uppercase font-bold tracking-widest">BOT API TOKEN</label>
+              <input
+                type="password"
+                placeholder="e.g. 1234567890:AAF7u-X8..."
+                value={telegramToken}
+                onChange={(e) => setTelegramToken(e.target.value)}
+                className="w-full bg-neutral-900 border border-neutral-800 p-2 rounded-lg text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-sky-500 font-mono text-xs"
+              />
+            </div>
+
+            {/* Chat ID entry */}
+            <div>
+              <label className="text-[10px] font-mono text-neutral-400 block mb-1 uppercase font-bold tracking-widest">CHAT ID / HANDLE</label>
+              <input
+                type="text"
+                placeholder="e.g. -10012345678 or @channel"
+                value={telegramChatId}
+                onChange={(e) => setTelegramChatId(e.target.value)}
+                className="w-full bg-neutral-900 border border-neutral-800 p-2 rounded-lg text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-sky-500 font-mono text-xs"
+              />
+            </div>
+
+            {/* Enabled switch toggles */}
+            <div className="flex items-center justify-between bg-neutral-900/60 p-2.5 rounded-xl border border-neutral-850">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold text-neutral-200 tracking-wide uppercase">Broadcast Live</span>
+                <span className="text-[9px] text-neutral-500">Enable automated channel alerts</span>
+              </div>
+              <input
+                type="checkbox"
+                checked={telegramEnabled}
+                onChange={(e) => setTelegramEnabled(e.target.checked)}
+                className="w-4 h-4 rounded border-neutral-800 text-sky-500 focus:ring-sky-500 bg-neutral-900 cursor-pointer"
+              />
+            </div>
+
+            {/* Connection test and save dashboard */}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                onClick={handleTestTelegram}
+                disabled={testLoading}
+                className="bg-neutral-900 hover:bg-neutral-800 text-neutral-300 font-bold border border-neutral-800 text-xs py-2 px-3 rounded-lg active:scale-95 transition-all text-center disabled:opacity-50"
+              >
+                {testLoading ? "Checking..." : "⚡ Test Ping"}
+              </button>
+              <button
+                onClick={handleSaveTelegram}
+                className="bg-[#0284c7] hover:bg-[#0369a1] text-white font-bold text-xs py-2 px-3 rounded-lg active:scale-95 transition-all text-center"
+              >
+                💾 Save Pipeline
+              </button>
+            </div>
+
+            {/* Render Connection Diagnostics result */}
+            {testResult && (
+              <div className={`p-2.5 rounded-lg text-[10.5px] border font-mono flex items-start gap-2 ${
+                testResult.success 
+                  ? "bg-emerald-950/40 text-emerald-400 border-emerald-500/20" 
+                  : "bg-red-950/40 text-red-400 border-red-500/20"
+              }`}>
+                {testResult.success ? (
+                  <Check className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                ) : (
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                )}
+                <span>{testResult.msg}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Dynamic step-by-step guidance accordion lists */}
+        <div className="border-t border-neutral-800/60 pt-4 mt-4">
+          <span className="text-[9px] text-sky-400 font-mono uppercase tracking-wider block font-bold mb-2">How can I set this up?</span>
+          <ol className="list-decimal list-inside text-[9.5px] text-neutral-500 font-medium space-y-1.5 leading-normal">
+            <li>Open Telegram &amp; look up <span className="text-neutral-400 font-bold">@BotFather</span></li>
+            <li>Send <span className="text-neutral-450 font-mono">/newbot</span> to create bot and obtain the Token</li>
+            <li>Search <span className="text-neutral-400 font-bold">@GetMyChatID_Bot</span> to find your numeric ID</li>
+            <li>Establish channel, add your bot as an <span className="text-neutral-400">Admin</span></li>
+            <li>Insert Details, trigger <span className="text-sky-400 font-bold">Test Ping</span>, &amp; save!</li>
+          </ol>
         </div>
       </div>
     </div>

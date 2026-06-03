@@ -510,6 +510,83 @@ async function sendTelegramAlert(message: string) {
   }
 }
 
+// Track execution guide stage triggers and dispatch automatically to Telegram
+let lastSentTelegramStageValue = 0;
+let lastSentTelegramDirectionValue = "";
+
+function checkTimelineTelegramNotifications() {
+  if (!state.params.isTelegramEnabled || !state.params.telegramBotToken || !state.params.telegramChatId) {
+    return;
+  }
+
+  const activeTrade = state.activeTrade;
+  const lastDecision = state.lastSignalCheck?.decision;
+  const brains = state.lastSignalCheck?.brains;
+  const tradesLog = state.tradesLog;
+  const lastTrade = tradesLog.length > 0 ? tradesLog[0] : null;
+
+  let currentStage = 1;
+  let highlightedDirection: "BUY" | "SELL" | "NONE" = "NONE";
+
+  // Check XGBoost for setup prep
+  const b1 = brains?.b1_xgboost ?? 0.5;
+  const isPrepBuy = b1 >= 0.60;
+  const isPrepSell = b1 <= 0.40;
+
+  if (activeTrade) {
+    if (activeTrade.isPartialClosed || activeTrade.stopMovedToBE) {
+      currentStage = 4;
+      highlightedDirection = activeTrade.type;
+    } else {
+      currentStage = 3;
+      highlightedDirection = activeTrade.type;
+    }
+  } else if (lastDecision === "BUY" || lastDecision === "SELL") {
+    currentStage = 2;
+    highlightedDirection = lastDecision;
+  } else {
+    const justClosed = lastTrade && (Date.now() - lastTrade.exitTime < 15000);
+    if (justClosed) {
+      currentStage = 5;
+      highlightedDirection = lastTrade.type;
+    } else {
+      currentStage = 1;
+      if (isPrepBuy) {
+        highlightedDirection = "BUY";
+      } else if (isPrepSell) {
+        highlightedDirection = "SELL";
+      }
+    }
+  }
+
+  // Check if state changed
+  if (currentStage !== lastSentTelegramStageValue || highlightedDirection !== lastSentTelegramDirectionValue) {
+    lastSentTelegramStageValue = currentStage;
+    lastSentTelegramDirectionValue = highlightedDirection;
+
+    let message = "";
+    if (currentStage === 1) {
+      if (highlightedDirection === "BUY") {
+        message = `⚠️ *[STAGE 1: PREPARE SETUP]*\n📈 *PREPARE BUY IS COMING!*\n\nMomentum is building Upward. Confluence indicators are assembling candidate Buy patterns near support. Prepare to enter Buy positions!`;
+      } else if (highlightedDirection === "SELL") {
+        message = `⚠️ *[STAGE 1: PREPARE SETUP]*\n📉 *PREPARE SELL IS COMING!*\n\nVolatility is expanding Downward. Alignment channels are brewing potential Sell configurations under resistance. Prepare to enter Sell positions!`;
+      }
+    } else if (currentStage === 2) {
+      message = `🚀 *[STAGE 2: EXECUTION]*\n🟢 *ENTER IN THE ${highlightedDirection}!*\n\nAll 10 risk gates and validation engines have passed! Firing automated ${highlightedDirection} market order now (0.01 Lot).`;
+    } else if (currentStage === 3) {
+      message = `🛡️ *[STAGE 3: HOLD THE ENTRY]*\n🟢 *HOLDING THE ${highlightedDirection} ENTRY!*\n\nPosition running smoothly. Track performance on the Gold interface.\n• Lot Size: 0.01 Lots\n• Entry Price: $${activeTrade?.entryPrice.toFixed(2)}`;
+    } else if (currentStage === 4) {
+      message = `🎯 *[STAGE 4: PREPARE FOR EXIT]*\n🟠 *PREPARE FOR EXIT!*\n\nPartial target secured! Banked 50% profit of the ${highlightedDirection} position. Remaining lot is trailing with Stop Loss secured at entry break-even.`;
+    } else if (currentStage === 5 && lastTrade) {
+      message = `🏁 *[STAGE 5: TAKE PROFIT]*\n🏆 *TAKE PROFIT / CYCLE COMPLETE!*\n\n${lastTrade.type} position exit finalized via *${lastTrade.exitReason}*. Realized profit booked successfully.`;
+    }
+
+    if (message) {
+      sendTelegramAlert(message);
+    }
+  }
+}
+
 // DECISION BRAINS CALCULATION (M5 closes or on demand analysis)
 async function evaluateBrains(currentPrice: number): Promise<BrainDecision> {
   const candles = state.candles;
@@ -1019,6 +1096,7 @@ async function processSignalFusion() {
   if (allPassed && intendedDirection !== "NONE") {
     executeTrade(intendedDirection, currentPrice, atr, sizingFactor);
   }
+  checkTimelineTelegramNotifications();
 }
 
 // EXECUTE TRADE ORDER
@@ -1165,6 +1243,7 @@ function handleMarketTick() {
       exitOpenPosition("Time Exit (Stale position clean-up)", currentPrice);
     }
   }
+  checkTimelineTelegramNotifications();
 }
 
 // EXIT OPEN POSITION ENGINE WRITE-OUT
@@ -1343,6 +1422,34 @@ app.post("/api/settings", (req, res) => {
   }
   saveState();
   res.json({ success: true, params: state.params, simulationMode: state.simulationMode, simulationSpeed: state.simulationSpeed });
+});
+
+app.post("/api/test-telegram", async (req, res) => {
+  const { botToken, chatId } = req.body;
+  if (!botToken || !chatId) {
+    return res.status(400).json({ error: "Missing botToken or chatId to perform integration test." });
+  }
+
+  try {
+    const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+    const message = `📡 *XAU/USD Gold Bot Pipeline:* Integration test successful! Your Execution Guide Timeline status updates are now connected.`;
+    
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: "Markdown" })
+    });
+
+    const data = await response.json();
+    if (data.ok) {
+      logBotEvent("SYSTEM", `Telegram broadcast integration tested successfully.`);
+      res.json({ success: true, detail: "Test message delivered successfully to Telegram!" });
+    } else {
+      res.status(400).json({ error: data.description || "Failed to deliver. Check Bot Token or Chat ID." });
+    }
+  } catch (err) {
+    res.status(500).json({ error: `Connection failed: ${String(err)}` });
+  }
 });
 
 app.post("/api/manual-trigger", (req, res) => {
