@@ -134,7 +134,7 @@ async function fetchRealActiveGoldCandles(): Promise<Candlestick[] | null> {
 const app = express();
 app.use(express.json());
 
-const PORT = 3000;
+const PORT = Number(process.env.PORT || 3000);
 const DB_FILE = path.join(process.cwd(), "db.json");
 
 // System parameters with sensible defaults
