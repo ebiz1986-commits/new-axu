@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { BotParams } from "../types";
-import { Sliders, Zap, Play, Radio, Calendar, Trash2, Ban, Send, Info, Check, HelpCircle, AlertCircle } from "lucide-react";
+import { Sliders, Zap, Play, Radio, Calendar, Trash2, Ban, Send, Info, Check, HelpCircle, AlertCircle, Volume2, VolumeX, TrendingUp, TrendingDown } from "lucide-react";
 
 interface ControlDashboardProps {
   params: BotParams;
@@ -12,6 +12,8 @@ interface ControlDashboardProps {
   onForceTrade: (direction: "BUY" | "SELL") => Promise<void>;
   onTriggerNews: (title: string, impact: "HIGH" | "MEDIUM") => Promise<void>;
   onReset: () => Promise<void>;
+  soundEnabled: boolean;
+  onToggleSound: (enabled: boolean) => void;
 }
 
 export function ControlDashboard({
@@ -24,6 +26,8 @@ export function ControlDashboard({
   onForceTrade,
   onTriggerNews,
   onReset,
+  soundEnabled,
+  onToggleSound,
 }: ControlDashboardProps) {
   // Local state for inputs
   const [risk, setRisk] = useState(params.riskPercent);
@@ -120,8 +124,8 @@ export function ControlDashboard({
 
           {/* Scenario select */}
           <div className="mb-4">
-            <label className="text-[10px] font-mono text-neutral-400 font-bold uppercase tracking-widest block mb-2">Preset Scenario</label>
-            <div className="grid grid-cols-2 gap-2 text-xs">
+            <label className="text-[10px] font-mono text-neutral-400 font-bold uppercase tracking-widest block mb-1.5">Preset Scenario</label>
+            <div className="flex flex-col gap-1.5 text-xs">
               {[
                 { id: "LIVE", label: "🌐 Real-Time Gold Feed" },
                 { id: "TREND_UP", label: "📈 Trend Up (Bull Rush)" },
@@ -133,195 +137,236 @@ export function ControlDashboard({
                 <button
                   key={item.id}
                   onClick={() => onUpdateModeSpeed(item.id, simSpeed)}
-                  className={`py-2 px-3 rounded-lg border text-left font-medium transition-all ${simMode === item.id ? "bg-amber-500 text-black border-amber-400 font-bold" : "bg-neutral-900 border-neutral-800 text-neutral-300 hover:border-neutral-700"}`}
+                  className={`w-full py-1.5 px-3 rounded-lg border text-left font-semibold transition-all flex items-center justify-between cursor-pointer select-none ${
+                    simMode === item.id 
+                      ? "bg-amber-500/15 border-amber-500/50 text-amber-400 shadow-sm shadow-amber-500/10" 
+                      : "bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:border-neutral-700 hover:text-neutral-300"
+                  }`}
                 >
-                  {item.label}
+                  <span className="truncate">{item.label}</span>
+                  {simMode === item.id && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0" />}
                 </button>
               ))}
             </div>
           </div>
 
           {/* Speed settings */}
-          <div>
-            <label className="text-[10px] font-mono text-neutral-400 font-bold uppercase tracking-widest block mb-2">Simulation Engine Speed</label>
-            <div className="flex gap-2">
+          <div className="mb-4">
+            <label className="text-[10px] font-mono text-neutral-400 font-bold uppercase tracking-widest block mb-1.5">Simulation Engine Speed</label>
+            <div className="grid grid-cols-3 gap-1.5">
               {[
-                { id: "REALTIME", label: "Realtime (2.5s Ticks)" },
-                { id: "FAST", label: "Fast (1.2s Ticks)" },
-                { id: "ULTRA", label: "Ultra Hyper (0.15s Ticks)" },
+                { id: "REALTIME", label: "Realtime", desc: "2.5s" },
+                { id: "FAST", label: "Fast", desc: "1.2s" },
+                { id: "ULTRA", label: "Ultra", desc: "0.15s" },
               ].map((sp) => (
                 <button
                   key={sp.id}
                   onClick={() => onUpdateModeSpeed(simMode, sp.id)}
-                  className={`flex-1 py-1.5 px-2 rounded-lg border text-center text-xs transition-all ${simSpeed === sp.id ? "bg-[#38bdf8] text-black border-[#0ea5e9] font-bold" : "bg-neutral-900 border-neutral-800 text-neutral-400 hover:border-neutral-700"}`}
+                  className={`py-1.5 px-1 rounded-lg border text-center transition-all cursor-pointer flex flex-col items-center justify-center select-none ${
+                    simSpeed === sp.id 
+                      ? "bg-sky-500/15 text-sky-450 border-sky-500/40 font-bold" 
+                      : "bg-neutral-900 border-neutral-800 text-neutral-400 hover:border-neutral-750"
+                  }`}
                 >
-                  {sp.label}
+                  <span className="text-[11px] leading-tight">{sp.label}</span>
+                  <span className={`text-[8.5px] font-mono mt-0.5 leading-none ${simSpeed === sp.id ? "text-sky-300" : "text-neutral-500"}`}>{sp.desc}</span>
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Sound notifications */}
+          <div>
+            <label className="text-[10px] font-mono text-neutral-400 font-bold uppercase tracking-widest block mb-1.5">Audio Notifications</label>
+            <button
+              type="button"
+              onClick={() => onToggleSound(!soundEnabled)}
+              className={`w-full flex items-center justify-between py-2 px-3.5 rounded-lg border text-xs font-semibold select-none transition-all ${
+                soundEnabled
+                  ? "bg-amber-500/15 text-amber-400 border-amber-500/35 hover:bg-amber-500/25 cursor-pointer"
+                  : "bg-neutral-900 border-neutral-800 text-neutral-500 hover:border-neutral-700 hover:text-neutral-400 cursor-pointer"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                {soundEnabled ? <Volume2 className="w-4 h-4 text-amber-400 animate-bounce" style={{ animationDuration: '2s' }} /> : <VolumeX className="w-4 h-4 text-neutral-500" />}
+                <span>{soundEnabled ? "Audio Cues Enabled" : "Audio Cues Muted"}</span>
+              </div>
+              <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded ${
+                soundEnabled ? "bg-amber-500/25 text-amber-300" : "bg-neutral-950 text-neutral-600"
+              }`}>
+                {soundEnabled ? "ON" : "OFF"}
+              </span>
+            </button>
           </div>
         </div>
 
         <div className="pt-4 border-t border-neutral-800/60 mt-4 text-[10px] text-neutral-500 flex justify-between items-center font-mono">
           <span>STATUS: AUTOPILOT ACTIVE</span>
-          <span className="animate-pulse text-amber-500">ENGINE CLOCKED AT 3000 MHz</span>
+          <span className="animate-pulse text-amber-500">ENGINE PORT: 3000</span>
         </div>
       </div>
 
       {/* 2. Parameters Tuning Form */}
-      <div className="bg-neutral-950/50 p-5 rounded-2xl border border-neutral-800">
-        <div className="flex items-center gap-2 mb-3">
-          <Sliders className="text-purple-400 w-5 h-5" />
-          <h3 className="font-display font-black text-neutral-100 text-sm tracking-tight uppercase">Tweak Algorithmic Gates</h3>
-        </div>
-        <p className="text-xs text-neutral-400 mb-4">Fine-tune indicator thresholds to observe how loosening/tightening impacts trade volume.</p>
-
-        <form onSubmit={handleSaveParams} className="space-y-4 text-xs">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-[10px] font-mono text-neutral-400 block mb-1 uppercase font-bold tracking-widest">Risk Allocation (%)</label>
-              <input
-                type="number"
-                step="0.1"
-                min="0.1"
-                max="5.0"
-                value={risk}
-                onChange={(e) => setRisk(Number(e.target.value))}
-                className="w-full bg-neutral-900 border border-neutral-800 p-2 rounded-lg text-neutral-100 focus:outline-none focus:border-amber-500 font-mono"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-mono text-neutral-400 block mb-1 uppercase font-bold tracking-widest">XGBoost Threshold (B1)</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0.5"
-                max="0.95"
-                value={b1}
-                onChange={(e) => setB1(Number(e.target.value))}
-                className="w-full bg-neutral-900 border border-neutral-800 p-2 rounded-lg text-neutral-100 focus:outline-none focus:border-amber-500 font-mono"
-              />
-            </div>
+      <div className="bg-neutral-950/50 p-5 rounded-2xl border border-neutral-800 flex flex-col justify-between">
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <Sliders className="text-purple-400 w-5 h-5" />
+            <h3 className="font-display font-black text-neutral-100 text-sm tracking-tight uppercase">Tweak Algorithmic Gates</h3>
           </div>
+          <p className="text-xs text-neutral-400 mb-4">Fine-tune indicator thresholds to observe how loosening/tightening impacts trade volume.</p>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-[10px] font-mono text-neutral-400 block mb-1 uppercase font-bold tracking-widest">Technical Confluence (B2)</label>
-              <input
-                type="number"
-                step="1"
-                min="4"
-                max="10"
-                value={b2}
-                onChange={(e) => setB2(Number(e.target.value))}
-                className="w-full bg-neutral-900 border border-neutral-800 p-2 rounded-lg text-neutral-100 focus:outline-none focus:border-amber-500 font-mono"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-mono text-neutral-400 block mb-1 uppercase font-bold tracking-widest">News Lockout window (M)</label>
-              <input
-                type="number"
-                step="1"
-                min="1"
-                max="30"
-                value={newsWindow}
-                onChange={(e) => setNewsWindow(Number(e.target.value))}
-                className="w-full bg-neutral-900 border border-neutral-800 p-2 rounded-lg text-neutral-100 focus:outline-none focus:border-amber-500 font-mono"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-[10px] font-mono text-neutral-400 block mb-1 uppercase font-bold tracking-widest">Max Daily Loss (%)</label>
-              <input
-                type="number"
-                step="0.1"
-                min="0.5"
-                max="10.0"
-                value={lockoutDaily}
-                onChange={(e) => setLockoutDaily(Number(e.target.value))}
-                className="w-full bg-neutral-900 border border-neutral-800 p-2 rounded-lg text-neutral-100 focus:outline-none focus:border-amber-500 font-mono"
-              />
-            </div>
-            <div className="flex flex-col justify-end">
-              <label className="flex items-center gap-2 cursor-pointer bg-neutral-900/65 px-2.5 py-2 rounded-lg border border-neutral-800 hover:border-neutral-700 select-none">
+          <form onSubmit={handleSaveParams} className="space-y-4 text-xs">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-[10px] font-mono text-neutral-400 block mb-1 uppercase font-bold tracking-widest">Risk Allocation (%)</label>
                 <input
-                  type="checkbox"
-                  checked={sessionLockoutEnabled}
-                  onChange={(e) => setSessionLockoutEnabled(e.target.checked)}
-                  className="w-4 h-4 text-purple-500 focus:ring-purple-500 bg-neutral-950 border-neutral-800 rounded cursor-pointer"
+                  type="number"
+                  step="0.1"
+                  min="0.1"
+                  max="5.0"
+                  value={risk}
+                  onChange={(e) => setRisk(Number(e.target.value))}
+                  className="w-full bg-neutral-900 border border-neutral-850 p-2 rounded-lg text-neutral-100 focus:outline-none focus:border-purple-500 font-mono"
                 />
-                <div className="flex flex-col shrink-0">
-                  <span className="text-[9.5px] text-neutral-250 font-bold uppercase tracking-wide">Asian Hour Lock</span>
-                  <span className="text-[8.5px] text-neutral-500">Enable session clock lock</span>
-                </div>
-              </label>
+              </div>
+              <div>
+                <label className="text-[10px] font-mono text-neutral-400 block mb-1 uppercase font-bold tracking-widest">XGBoost (B1)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.5"
+                  max="0.95"
+                  value={b1}
+                  onChange={(e) => setB1(Number(e.target.value))}
+                  className="w-full bg-neutral-900 border border-neutral-850 p-2 rounded-lg text-neutral-100 focus:outline-none focus:border-purple-500 font-mono"
+                />
+              </div>
             </div>
-          </div>
 
-          <button
-            type="submit"
-            className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 py-2.5 px-4 rounded-lg font-bold text-neutral-100 hover:scale-102 hover:shadow-lg transition-all text-xs outline-none uppercase font-mono tracking-widest mt-2"
-          >
-            Apply Parameters
-          </button>
-        </form>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-[10px] font-mono text-neutral-400 block mb-1 uppercase font-bold tracking-widest">Confluence (B2)</label>
+                <input
+                  type="number"
+                  step="1"
+                  min="4"
+                  max="10"
+                  value={b2}
+                  onChange={(e) => setB2(Number(e.target.value))}
+                  className="w-full bg-neutral-900 border border-neutral-850 p-2 rounded-lg text-neutral-100 focus:outline-none focus:border-purple-500 font-mono"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-mono text-neutral-400 block mb-1 uppercase font-bold tracking-widest">Lockout (M)</label>
+                <input
+                  type="number"
+                  step="1"
+                  min="0"
+                  max="30"
+                  value={newsWindow}
+                  onChange={(e) => setNewsWindow(Number(e.target.value))}
+                  className="w-full bg-neutral-900 border border-neutral-850 p-2 rounded-lg text-neutral-100 focus:outline-none focus:border-purple-500 font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-[10px] font-mono text-neutral-400 block mb-1 uppercase font-bold tracking-widest">Max Daily Loss (%)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0.5"
+                  max="10.0"
+                  value={lockoutDaily}
+                  onChange={(e) => setLockoutDaily(Number(e.target.value))}
+                  className="w-full bg-neutral-900 border border-neutral-850 p-2 rounded-lg text-neutral-100 focus:outline-none focus:border-purple-500 font-mono"
+                />
+              </div>
+              <div className="flex flex-col justify-end">
+                <label className="flex items-center gap-2 cursor-pointer bg-neutral-900/60 px-2 py-2 rounded-lg border border-neutral-800 hover:border-neutral-750 select-none">
+                  <input
+                    type="checkbox"
+                    checked={sessionLockoutEnabled}
+                    onChange={(e) => setSessionLockoutEnabled(e.target.checked)}
+                    className="w-4 h-4 text-purple-500 focus:ring-purple-500 bg-neutral-950 border-neutral-850 rounded cursor-pointer"
+                  />
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-[9.5px] text-neutral-200 font-bold uppercase tracking-wide">Asian Lock</span>
+                    <span className="text-[8.5px] text-neutral-500 truncate">Lock session clock</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 py-2.5 px-4 rounded-lg font-bold text-neutral-100 hover:shadow-lg transition-all text-xs outline-none uppercase font-mono tracking-widest mt-2 cursor-pointer select-none"
+            >
+              Apply Parameters
+            </button>
+          </form>
+        </div>
+
+        <div className="pt-4 border-t border-neutral-800/60 mt-4 text-[10px] text-neutral-500 flex justify-between items-center font-mono">
+          <span>PIPELINE: ACTIVE</span>
+          <span className="text-purple-400">GATES AUDITED</span>
+        </div>
       </div>
 
       {/* 3. News Dispatch & Emergency Control Deck */}
       <div className="bg-neutral-950/50 p-5 rounded-2xl border border-neutral-800 flex flex-col justify-between">
-        <div>
+        <div className="flex-1">
           <div className="flex items-center gap-2 mb-3">
             <Radio className="text-red-400 w-5 h-5 animate-pulse" />
             <h3 className="font-display font-black text-neutral-100 text-sm tracking-tight uppercase">Interactive Manual Spikes</h3>
           </div>
           <p className="text-xs text-neutral-400 mb-4">Manually inject sudden news releases or bypass signals to verify the ATR stop loss models.</p>
 
-          {/* Dispatch custom calendar news items */}
-          <div className="bg-neutral-900 p-3 rounded-xl border border-neutral-800 mb-4">
-            <span className="text-[9px] font-mono font-bold text-red-400 uppercase tracking-widest block mb-2">Virtual Economic calendar</span>
-            <div className="flex gap-2">
+          {/* Dispatch custom calendar news items - Vertically Stacked to Prevent Overlapping */}
+          <div className="bg-neutral-900/50 p-3 rounded-xl border border-neutral-850 mb-4 flex flex-col gap-2.5">
+            <div>
+              <span className="text-[9px] font-mono font-bold text-red-400 uppercase tracking-widest block mb-1">Economic Event Descriptor</span>
               <input
                 type="text"
                 placeholder="USD CPI News Event..."
                 value={newsTitle}
                 onChange={(e) => setNewsTitle(e.target.value)}
-                className="flex-1 bg-neutral-950 text-xs border border-neutral-800 p-2 rounded-lg text-neutral-200 outline-none focus:border-red-500"
+                className="w-full bg-neutral-950 text-xs border border-neutral-800 p-2 rounded-lg text-neutral-200 outline-none focus:border-red-500 font-mono"
               />
-              <button
-                onClick={handleNewsSubmit}
-                className="bg-red-950/30 font-bold hover:bg-red-500 hover:text-white text-red-400 border border-red-900/60 transition-all text-xs px-2 rounded-lg py-1 flex items-center gap-1 shrink-0"
-              >
-                <Calendar className="w-3 h-3" /> Spike News
-              </button>
             </div>
+            <button
+              onClick={handleNewsSubmit}
+              className="w-full justify-center bg-red-950/30 font-bold hover:bg-red-500 hover:text-white text-red-400 border border-red-900/40 hover:border-red-500 transition-all text-xs rounded-lg py-2 flex items-center gap-1.5 cursor-pointer select-none"
+            >
+              <Calendar className="w-3.5 h-3.5" /> Inject News Spike
+            </button>
           </div>
 
-          <div className="flex gap-3">
+          <div className="grid grid-cols-2 gap-2.5">
             <button
               onClick={() => onForceTrade("BUY")}
-              className="flex-1 bg-green-500/10 hover:bg-green-500 hover:text-black hover:scale-102 text-green-400 font-bold border border-green-500/30 text-xs py-2 px-3 rounded-xl transition-all"
+              className="flex items-center justify-center gap-1.5 py-2.5 px-2 bg-green-500/10 hover:bg-green-500 hover:text-black text-green-400 font-extrabold border border-green-500/20 hover:border-green-400 rounded-xl transition-all text-xs cursor-pointer select-none active:scale-95"
             >
-              Manual BUY entry
+              <TrendingUp className="w-4 h-4 shrink-0" /> BUY
             </button>
             <button
               onClick={() => onForceTrade("SELL")}
-              className="flex-1 bg-red-500/10 hover:bg-red-500 hover:text-black hover:scale-102 text-red-400 font-bold border border-red-500/30 text-xs py-2 px-3 rounded-xl transition-all"
+              className="flex items-center justify-center gap-1.5 py-2.5 px-2 bg-red-500/10 hover:bg-red-500 hover:text-black text-red-400 font-extrabold border border-red-500/20 hover:border-red-400 rounded-xl transition-all text-xs cursor-pointer select-none active:scale-95"
             >
-              Manual SELL entry
+              <TrendingDown className="w-4 h-4 shrink-0" /> SELL
             </button>
           </div>
         </div>
 
         {/* Global wiping parameters */}
-        <div className="flex justify-between items-center border-t border-neutral-800/60 pt-4 mt-4">
-          <span className="text-[10px] text-neutral-500 font-mono uppercase tracking-wider">Emergency overrides</span>
+        <div className="flex flex-col gap-2 border-t border-neutral-800/60 pt-4 mt-5">
+          <span className="text-[9px] text-neutral-500 font-mono uppercase tracking-wider block font-bold">Emergency Overrides</span>
           <button
             onClick={onReset}
-            className="flex items-center gap-1 bg-red-500/20 hover:bg-red-500 hover:text-white border border-red-500/30 text-red-400 font-bold text-[10px] font-mono px-3 py-1.5 rounded-lg active:scale-95 transition-all"
+            className="w-full flex items-center justify-center gap-1.5 bg-red-500/10 hover:bg-red-600 hover:text-white border border-red-500/20 text-red-400 font-bold text-xs py-2 rounded-lg active:scale-95 transition-all cursor-pointer select-none font-mono"
           >
-            <Trash2 className="w-3.5 h-3.5" /> Wipe Bot Database & Restarts
+            <Trash2 className="w-3.5 h-3.5" /> Wipe Bot Database
           </button>
         </div>
       </div>
@@ -337,7 +382,7 @@ export function ControlDashboard({
             Route real-time Execution Guide Timeline phases, lot details, and TP/SL limits directly to your Telegram channel!
           </p>
 
-          <div className="space-y-3.5 text-xs">
+          <div className="space-y-3 text-xs">
             {/* Token entry */}
             <div>
               <label className="text-[10px] font-mono text-neutral-400 block mb-1 uppercase font-bold tracking-widest">BOT API TOKEN</label>
@@ -346,7 +391,7 @@ export function ControlDashboard({
                 placeholder="e.g. 1234567890:AAF7u-X8..."
                 value={telegramToken}
                 onChange={(e) => setTelegramToken(e.target.value)}
-                className="w-full bg-neutral-900 border border-neutral-800 p-2 rounded-lg text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-sky-500 font-mono text-xs"
+                className="w-full bg-neutral-900 border border-neutral-850 p-2 rounded-lg text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-sky-500 font-mono text-xs"
               />
             </div>
 
@@ -358,12 +403,12 @@ export function ControlDashboard({
                 placeholder="e.g. -10012345678 or @channel"
                 value={telegramChatId}
                 onChange={(e) => setTelegramChatId(e.target.value)}
-                className="w-full bg-neutral-900 border border-neutral-800 p-2 rounded-lg text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-sky-500 font-mono text-xs"
+                className="w-full bg-neutral-900 border border-neutral-850 p-2 rounded-lg text-neutral-100 placeholder-neutral-600 focus:outline-none focus:border-sky-500 font-mono text-xs"
               />
             </div>
 
             {/* Enabled switch toggles */}
-            <div className="flex items-center justify-between bg-neutral-900/60 p-2.5 rounded-xl border border-neutral-850">
+            <div className="flex items-center justify-between bg-neutral-900/60 p-2 rounded-xl border border-neutral-855">
               <div className="flex flex-col">
                 <span className="text-[10px] font-bold text-neutral-200 tracking-wide uppercase">Broadcast Live</span>
                 <span className="text-[9px] text-neutral-500">Enable automated channel alerts</span>
@@ -372,7 +417,7 @@ export function ControlDashboard({
                 type="checkbox"
                 checked={telegramEnabled}
                 onChange={(e) => setTelegramEnabled(e.target.checked)}
-                className="w-4 h-4 rounded border-neutral-800 text-sky-500 focus:ring-sky-500 bg-neutral-900 cursor-pointer"
+                className="w-4 h-4 rounded border-neutral-850 text-sky-500 focus:ring-sky-500 bg-neutral-900 cursor-pointer"
               />
             </div>
 
@@ -381,13 +426,13 @@ export function ControlDashboard({
               <button
                 onClick={handleTestTelegram}
                 disabled={testLoading}
-                className="bg-neutral-900 hover:bg-neutral-800 text-neutral-300 font-bold border border-neutral-800 text-xs py-2 px-3 rounded-lg active:scale-95 transition-all text-center disabled:opacity-50"
+                className="bg-neutral-900 hover:bg-neutral-800 text-neutral-350 font-bold border border-neutral-800 text-xs py-2 px-1 rounded-lg active:scale-95 transition-all text-center disabled:opacity-50 cursor-pointer select-none"
               >
                 {testLoading ? "Checking..." : "⚡ Test Ping"}
               </button>
               <button
                 onClick={handleSaveTelegram}
-                className="bg-[#0284c7] hover:bg-[#0369a1] text-white font-bold text-xs py-2 px-3 rounded-lg active:scale-95 transition-all text-center"
+                className="bg-[#0284c7] hover:bg-[#0369a1] text-white font-bold text-xs py-2 px-1 rounded-lg active:scale-95 transition-all text-center cursor-pointer select-none"
               >
                 💾 Save Pipeline
               </button>
@@ -395,7 +440,7 @@ export function ControlDashboard({
 
             {/* Render Connection Diagnostics result */}
             {testResult && (
-              <div className={`p-2.5 rounded-lg text-[10.5px] border font-mono flex items-start gap-2 ${
+              <div className={`p-2 rounded-lg text-[10px] border font-mono flex items-start gap-1.5 ${
                 testResult.success 
                   ? "bg-emerald-950/40 text-emerald-400 border-emerald-500/20" 
                   : "bg-red-950/40 text-red-400 border-red-500/20"
@@ -405,22 +450,21 @@ export function ControlDashboard({
                 ) : (
                   <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                 )}
-                <span>{testResult.msg}</span>
+                <span className="break-all">{testResult.msg}</span>
               </div>
             )}
           </div>
         </div>
 
         {/* Dynamic step-by-step guidance accordion lists */}
-        <div className="border-t border-neutral-800/60 pt-4 mt-4">
-          <span className="text-[9px] text-sky-400 font-mono uppercase tracking-wider block font-bold mb-2">How can I set this up?</span>
-          <ol className="list-decimal list-inside text-[9.5px] text-neutral-500 font-medium space-y-1.5 leading-normal">
-            <li>Open Telegram &amp; look up <span className="text-neutral-400 font-bold">@BotFather</span></li>
-            <li>Send <span className="text-neutral-450 font-mono">/newbot</span> to create bot and obtain the Token</li>
-            <li>Search <span className="text-neutral-400 font-bold">@GetMyChatID_Bot</span> to find your numeric ID</li>
-            <li>Establish channel, add your bot as an <span className="text-neutral-400">Admin</span></li>
-            <li>Insert Details, trigger <span className="text-sky-400 font-bold">Test Ping</span>, &amp; save!</li>
-          </ol>
+        <div className="border-t border-neutral-800/60 pt-4 mt-4 text-[9.5px] text-neutral-500 font-medium">
+          <span className="text-[9px] text-sky-400 font-mono uppercase tracking-wider block font-bold mb-1.5">How to set this up:</span>
+          <div className="space-y-1 font-mono text-[9px] leading-relaxed">
+            <div>1. Open Telegram Search <span className="text-neutral-450 font-bold">@BotFather</span></div>
+            <div>2. Message <span className="text-amber-500 font-mono">/newbot</span> to get Token ID</div>
+            <div>3. Use <span className="text-neutral-450 font-bold">@GetMyChatID_Bot</span> for Chat ID</div>
+            <div>4. Create public channel, add bot as <span className="text-neutral-450 font-bold">Admin</span></div>
+          </div>
         </div>
       </div>
     </div>

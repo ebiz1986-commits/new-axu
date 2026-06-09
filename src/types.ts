@@ -61,6 +61,8 @@ export interface CompletedTrade {
   profit: number;
   exitReason: string;
   isPartialClosed: boolean;
+  highestPriceSeen?: number;
+  lowestPriceSeen?: number;
 }
 
 export interface BrainDecision {
@@ -95,6 +97,9 @@ export interface AuditLog {
 
 export interface BotState {
   balance: number;
+  startBalance: number;
+  dailyStartingBalance: number;
+  weeklyStartingBalance: number;
   equity: number;
   goldPrice: number;
   tickHistory: { time: number; price: number }[];

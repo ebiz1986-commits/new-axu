@@ -8,12 +8,24 @@ import { MetricsPanel } from "./components/MetricsPanel";
 import { ExecutionGuideTimeline } from "./components/ExecutionGuideTimeline";
 import { ShieldAlert, Cpu, Terminal, Radio } from "lucide-react";
 import { motion } from "motion/react";
+import { useTradeSounds } from "./hooks/useTradeSounds";
 
 export default function App() {
   const [state, setState] = useState<BotState | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [consecutiveFailures, setConsecutiveFailures] = useState(0);
+
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
+    return localStorage.getItem("sound_notifications_enabled") !== "false";
+  });
+
+  // Call trade sounds hook to monitor and trigger subtle audio chimes
+  useTradeSounds(state ? state.activeTrade : null, soundEnabled);
+
+  useEffect(() => {
+    localStorage.setItem("sound_notifications_enabled", soundEnabled ? "true" : "false");
+  }, [soundEnabled]);
 
   const fetchState = async () => {
     try {
@@ -264,6 +276,8 @@ export default function App() {
                 onForceTrade={handleForceTrade}
                 onTriggerNews={handleTriggerNews}
                 onReset={handleReset}
+                soundEnabled={soundEnabled}
+                onToggleSound={setSoundEnabled}
               />
             )}
           </div>
@@ -302,7 +316,7 @@ export default function App() {
                       };
 
                       // Generate a stable unique key
-                      const itemKey = `${log.time}-${log.message.slice(0, 30)}`;
+                      const itemKey = `${log.time}-${log.message.slice(0, 30)}-${index}`;
 
                       return (
                         <motion.div
