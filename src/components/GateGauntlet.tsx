@@ -30,11 +30,10 @@ function getGateCloseness(g: GateStatus): { percent: number; label: string } {
 
   switch (g.id) {
     case "g1": {
-      const matchConfluence = g.detail.match(/Confluence score is (\d+)\/10/i);
-      const matchReq = g.detail.match(/requires >=(\d+)/i);
-      if (matchConfluence && matchReq) {
-        const cur = parseInt(matchConfluence[1], 10);
-        const req = parseInt(matchReq[1], 10);
+      const match = g.detail.match(/Confluence score is (\d+)\/10.*?requires >=([\d.]+)/i);
+      if (match) {
+        const cur = parseInt(match[1], 10);
+        const req = parseFloat(match[2]);
         const pct = Math.round((cur / req) * 100);
         return { percent: Math.max(10, Math.min(95, pct)), label: `Indicator Confluence: ${cur}/${req}` };
       }

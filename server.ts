@@ -157,8 +157,8 @@ interface BotParams {
 
 const defaultParams: BotParams = {
   riskPercent: 1.5,
-  b1Threshold: 0.65,
-  b2Floor: 7.5,
+  b1Threshold: 0.60,
+  b2Floor: 6.0,
   trailingStopMultiplier: 1.8,
   partialCloseAtrRatio: 1.5,
   lockoutMaxDailyLossPercent: 2.0,
@@ -740,9 +740,9 @@ async function evaluateBrains(currentPrice: number): Promise<BrainDecision> {
   // Fakes a high quality ML forecast mapped on trend momentum, RSI, and random weights
   const emaFast = lastCandle.ema9 || lastCandle.close;
   const emaSlow = lastCandle.ema21 || lastCandle.close;
-  const directionFactor = emaFast > emaSlow ? 0.58 : 0.42;
+  const directionFactor = emaFast > emaSlow ? 0.62 : 0.38;
   const rsiFactor = ((lastCandle.rsi || 50) - 50) / 100; // positive for buy, negative for sell
-  let b1_xgboost = directionFactor + rsiFactor + (Math.random() - 0.5) * 0.15;
+  let b1_xgboost = directionFactor + rsiFactor + (Math.random() - 0.5) * 0.12;
   b1_xgboost = Math.max(0, Math.min(1, b1_xgboost));
 
   // 3. B2: Confluence Multi-Indicator Scoring (0 to 10 points)
@@ -1001,13 +1001,11 @@ async function processSignalFusion() {
 
   if (brains.b1_xgboost >= xgboostThreshold && 
       brains.b2_confluence >= state.params.b2Floor && 
-      lastCandle.ema9! > lastCandle.ema21! &&
-      lastCandle.ema20! > lastCandle.ema50!) {
+      lastCandle.ema9! > lastCandle.ema21!) {
     intendedDirection = "BUY";
   } else if (brains.b1_xgboost <= xgboostSellLimit && 
              brains.b2_confluence >= state.params.b2Floor && 
-             lastCandle.ema9! < lastCandle.ema21! &&
-             lastCandle.ema20! < lastCandle.ema50!) {
+             lastCandle.ema9! < lastCandle.ema21!) {
     intendedDirection = "SELL";
   }
 
@@ -1179,8 +1177,8 @@ async function processSignalFusion() {
     }
   }
 
-  // Quality Constraint: Require structure proximity OR premium B2 (score >= 8.5)
-  const strongB2Floor = 8.5;
+  // Quality Constraint: Require structure proximity OR premium B2 (score >= strongB2Floor)
+  const strongB2Floor = Math.min(10, state.params.b2Floor + 1.0);
   const isHighQualityEntry = nearStructure || brains.b2_confluence >= strongB2Floor;
   const g9_passed = momentumPassed && isHighQualityEntry;
   
