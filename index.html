@@ -146,7 +146,7 @@
                         <div>
                             <span class="font-display text-3xl tracking-tighter font-semibold">Gold</span>
                             <span class="font-display text-3xl tracking-tighter font-semibold gold-gradient">Forge</span>
-                            <span class="text-[10px] font-mono tracking-[2px] text-amber-400/70 ml-0.5">AI</span>
+                            <span class="text-[10px] font-mono tracking-[2px] text-amber-400/70 ml-0.5">SIGNAL</span>
                         </div>
                     </div>
                     <div class="hidden md:flex items-center gap-x-1.5 pl-3 border-l border-zinc-800">
@@ -168,6 +168,11 @@
                         <div>
                             <div class="text-xs text-zinc-400">TODAY'S P&amp;L</div>
                             <div id="today-pnl" class="font-mono text-xl font-semibold tracking-tighter text-emerald-400">+$142.80</div>
+                        </div>
+                        <!-- Daily Risk Status -->
+                        <div class="text-xs">
+                            <div class="text-zinc-400">DAILY STATUS</div>
+                            <div id="daily-status" class="font-mono text-emerald-400">0/5 trades • $0 loss</div>
                         </div>
                     </div>
 
@@ -206,7 +211,7 @@
                         <span>STRONG UPTREND</span>
                     </div>
                 </div>
-                <p class="text-zinc-400 text-sm mt-0.5">Real-time • Dual AI Brain Analysis • Simulated Execution</p>
+                <p class="text-zinc-400 text-sm mt-0.5">Real-time Dual AI Analysis • High-Probability Signals for Manual Trading</p>
             </div>
             
             <!-- Live Price -->
@@ -412,6 +417,11 @@
                                 <i class="fa-solid fa-bolt-lightning"></i>
                                 <span>BEST MOMENT TO ENTER</span>
                             </div>
+                            <div id="brain3-badge" onclick="showBrain3Reason()" 
+                                 class="hidden cursor-pointer items-center gap-x-1.5 text-xs px-3 py-1 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 rounded-2xl transition-colors">
+                                <i class="fa-solid fa-robot"></i>
+                                <span id="brain3-text">Brain 3: Analyzing...</span>
+                            </div>
                         </div>
                     </div>
                     
@@ -422,33 +432,48 @@
                     </div>
                 </div>
                 
-                <div class="mt-4 grid grid-cols-3 gap-3 text-xs">
-                    <div onclick="if(confirm('Execute manual LONG entry?')) manualEnter('LONG')" 
-                         class="cursor-pointer flex flex-col items-center justify-center py-3 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-2xl transition-colors">
-                        <div class="font-bold text-emerald-400">MANUAL LONG</div>
-                        <div class="text-emerald-400/60 text-xs">1% Risk</div>
+                <div class="mt-4 grid grid-cols-2 gap-3 text-xs">
+                    <div onclick="sendHighQualitySignal()" 
+                         class="cursor-pointer col-span-2 md:col-span-1 flex flex-col items-center justify-center py-3.5 bg-amber-400 hover:bg-amber-300 text-zinc-950 font-bold rounded-2xl transition-all active:scale-[0.985]">
+                        <div class="flex items-center gap-x-2">
+                            <i class="fa-brands fa-telegram text-lg"></i>
+                            <span>SEND SIGNAL TO TELEGRAM</span>
+                        </div>
+                        <div class="text-[10px] text-zinc-800 font-medium mt-0.5">High Probability Only</div>
                     </div>
-                    <div onclick="if(confirm('Execute manual SHORT entry?')) manualEnter('SHORT')" 
-                         class="cursor-pointer flex flex-col items-center justify-center py-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-2xl transition-colors">
-                        <div class="font-bold text-red-400">MANUAL SHORT</div>
-                        <div class="text-red-400/60 text-xs">1% Risk</div>
-                    </div>
+                    
                     <div onclick="closePosition()" 
                          class="cursor-pointer flex flex-col items-center justify-center py-3 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-2xl transition-colors">
-                        <div class="font-bold">CLOSE POSITION</div>
-                        <div class="text-zinc-400 text-xs">If open</div>
+                        <div class="font-bold">CLOSE SIM POSITION</div>
+                        <div class="text-zinc-400 text-xs">Virtual only</div>
                     </div>
+
+                    <!-- Force Close Button -->
+                    <button onclick="if(confirm('Force close the current position? This is for emergency only.')) closePosition('Force Closed by User')" 
+                            class="col-span-2 mt-2 text-xs py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-2xl transition-colors flex items-center justify-center gap-x-2">
+                        <i class="fa-solid fa-exclamation-triangle"></i>
+                        <span>FORCE CLOSE POSITION</span>
+                    </button>
                 </div>
             </div>
 
             <!-- Active Position -->
             <div class="xl:col-span-7 trading-card rounded-3xl p-5">
                 <div class="flex items-center justify-between mb-4">
-                    <div class="section-header">ACTIVE POSITION • SIMULATED</div>
-                    <div id="position-status-pill" class="px-3 py-1 text-xs font-medium rounded-3xl bg-zinc-800 text-zinc-400">NO OPEN POSITION</div>
+                    <div class="section-header">SIMULATION POSITION (For Testing Only)</div>
+                    <div class="flex items-center gap-x-2">
+                        <div class="px-2.5 py-0.5 text-[10px] font-bold bg-amber-400 text-zinc-950 rounded-2xl">MAX 1 TRADE</div>
+                        <div id="position-status-pill" class="px-3 py-1 text-xs font-medium rounded-3xl bg-zinc-800 text-zinc-400">NO OPEN POSITION</div>
+                    </div>
                 </div>
                 
                 <div id="position-details" class="hidden">
+                    <!-- Clear Banner when trade is open -->
+                    <div class="mb-4 px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl flex items-center gap-x-2">
+                        <i class="fa-solid fa-info-circle text-emerald-400"></i>
+                        <span class="text-sm text-emerald-400 font-medium">One active position is open. No new trades will be taken until this is closed.</span>
+                    </div>
+                    
                     <div class="grid grid-cols-2 md:grid-cols-5 gap-y-4">
                         <div>
                             <div class="text-xs text-zinc-400">DIRECTION</div>
@@ -457,7 +482,10 @@
                         <div>
                             <div class="text-xs text-zinc-400">ENTRY PRICE</div>
                             <div id="pos-entry" class="font-mono text-xl font-semibold">2651.80</div>
-                            <div id="pos-time" class="text-xs text-zinc-500">12m ago</div>
+                            <div class="flex items-center gap-x-2">
+                                <div id="pos-time" class="text-xs text-zinc-500">12m ago</div>
+                                <div id="pos-duration" class="text-xs px-2 py-0.5 bg-zinc-800 rounded text-emerald-400 font-mono">2h 14m</div>
+                            </div>
                         </div>
                         <div>
                             <div class="text-xs text-zinc-400">CURRENT P&amp;L</div>
@@ -573,6 +601,24 @@
                         <div id="metric-rr" class="text-3xl font-semibold font-mono tracking-tighter">1:2.1</div>
                     </div>
                 </div>
+
+                <!-- Brain 3 Performance Comparison -->
+                <div class="bg-zinc-900 rounded-2xl p-4 border border-purple-500/30 mb-5">
+                    <div class="text-xs text-purple-400 font-medium mb-3 flex items-center gap-x-2">
+                        <i class="fa-solid fa-robot"></i>
+                        <span>BRAIN 3 IMPACT</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <div class="text-xs text-zinc-400">Win Rate <span class="text-purple-400">(with Brain 3)</span></div>
+                            <div id="metric-winrate-brain3" class="font-mono text-2xl font-semibold text-purple-400">—</div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-zinc-400">Win Rate <span class="text-zinc-400">(without Brain 3)</span></div>
+                            <div id="metric-winrate-no-brain3" class="font-mono text-2xl font-semibold text-zinc-400">—</div>
+                        </div>
+                    </div>
+                </div>
                 
                 <!-- Trade Log Table -->
                 <div class="overflow-x-auto max-h-[240px] custom-scroll">
@@ -613,11 +659,11 @@
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="text-xs text-zinc-400 block mb-1">Starting Virtual Capital</label>
-                            <input id="setting-capital" type="number" value="10000" class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-4 py-2 font-mono">
+                            <input id="setting-capital" type="number" value="100" class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-4 py-2 font-mono">
                         </div>
                         <div>
                             <label class="text-xs text-zinc-400 block mb-1">Risk per Trade (%)</label>
-                            <input id="setting-risk" type="number" value="1" step="0.1" class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-4 py-2 font-mono">
+                            <input id="setting-risk" type="number" value="2" step="0.1" class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-4 py-2 font-mono">
                         </div>
                     </div>
                 </div>
@@ -645,10 +691,19 @@
                 
                 <div>
                     <div class="font-medium mb-2 text-amber-400">LIVE DATA (OPTIONAL)</div>
-                    <div class="text-xs text-zinc-400 mb-2">For production, use a free Gold API key (GoldAPI.io recommended • 100 req/mo free). Simulation is highly realistic for strategy testing.</div>
-                    <input id="setting-apikey" type="text" placeholder="GoldAPI.io access token (optional)" 
+                    <div class="text-xs text-zinc-400 mb-2">Using your <b>Twelve Data</b> key for real-time XAU/USD. Leave empty = Simulation mode.</div>
+                    <input id="setting-apikey" type="text" value="bc195a425c7b4aea85b1d696cc8001f9" 
                            class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-4 py-2 text-xs font-mono">
                     <div class="text-[10px] text-zinc-500 mt-1">Leave empty to stay in high-fidelity simulation mode.</div>
+                </div>
+
+                <!-- Groq AI Key -->
+                <div>
+                    <div class="font-medium mb-2 text-amber-400">AI BRAIN (LLM) - OPTIONAL</div>
+                    <div class="text-xs text-zinc-400 mb-2">Add your AI API key (OpenAI, Gemini via compatible format, or any OpenAI-compatible provider) to enable Brain 3 for much smarter analysis.</div>
+                    <input id="setting-groq-key" type="text" placeholder="sk-... or your API key" 
+                           class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-4 py-2 text-xs font-mono">
+                    <div class="text-[10px] text-emerald-400 mt-1">Works with OpenAI, Groq, Together.ai, Fireworks, OpenRouter, etc.</div>
                 </div>
             </div>
             
@@ -667,24 +722,32 @@
             currentPrice: 2658.45,
             previousPrice: 2658.45,
             historicalData: [], // {time, open, high, low, close}
-            balance: 10000,
+            balance: 100,
             todayPnL: 0,
             openPosition: null,
             tradeHistory: [],
             settings: {
                 autoTrade: true,
-                riskPerTrade: 1.0,
-                startingCapital: 10000,
+                riskPerTrade: 2.0,
+                startingCapital: 100,
                 telegramToken: '',
                 telegramChatId: '',
-                apiKey: '',
-                useLiveData: false
+                apiKey: 'bc195a425c7b4aea85b1d696cc8001f9',
+                groqApiKey: '',
+                useLiveData: true,
+                brain3Enabled: true
             },
             lastAnalysisTime: Date.now(),
             currentTimeframe: '5m',
             chart: null,
             simulationInterval: null,
-            lastTelegramSent: 0
+            lastTelegramSent: 0,
+            dataSource: 'live',
+            lastLLMResult: null,   // Stores last Brain 3 analysis
+            // Daily tracking
+            dailyPnL: 0,
+            dailyTradeCount: 0,
+            lastTradeDay: null
         };
 
         // Load from localStorage
@@ -692,7 +755,7 @@
             const saved = localStorage.getItem('goldforge_state_v2');
             if (saved) {
                 const parsed = JSON.parse(saved);
-                state.balance = parsed.balance || 10000;
+                state.balance = parsed.balance || 100;
                 state.tradeHistory = parsed.tradeHistory || [];
                 state.settings = { ...state.settings, ...parsed.settings };
                 if (parsed.openPosition) state.openPosition = parsed.openPosition;
@@ -1001,24 +1064,113 @@
             return { signal, confidence, isRocket, isWaterfall };
         }
 
+        // ==================== TWELVE DATA REAL-TIME INTEGRATION ====================
+        async function fetchTwelveDataPrice() {
+            if (!state.settings.apiKey) return null;
+            
+            try {
+                const url = `https://api.twelvedata.com/price?symbol=XAU/USD&apikey=${state.settings.apiKey}`;
+                const res = await fetch(url);
+                const data = await res.json();
+                
+                if (data.price) {
+                    return parseFloat(data.price);
+                }
+                return null;
+            } catch (e) {
+                console.log('Twelve Data price fetch failed');
+                return null;
+            }
+        }
+
+        async function fetchTwelveDataCandles(limit = 80) {
+            if (!state.settings.apiKey) return null;
+            
+            try {
+                const url = `https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=5min&outputsize=${limit}&apikey=${state.settings.apiKey}`;
+                const res = await fetch(url);
+                const data = await res.json();
+                
+                if (data.values && Array.isArray(data.values)) {
+                    // Twelve Data returns newest first, so reverse it
+                    const candles = data.values.reverse().map(item => ({
+                        time: new Date(item.datetime).getTime(),
+                        open: parseFloat(item.open),
+                        high: parseFloat(item.high),
+                        low: parseFloat(item.low),
+                        close: parseFloat(item.close)
+                    }));
+                    return candles;
+                }
+                return null;
+            } catch (e) {
+                console.log('Twelve Data candles fetch failed');
+                return null;
+            }
+        }
+
+        async function switchToLiveData() {
+            if (!state.settings.apiKey) {
+                showToast('No API key found. Staying in simulation.', 'error');
+                return;
+            }
+            
+            showToast('Connecting to Twelve Data for real XAU/USD...', 'info');
+            
+            const candles = await fetchTwelveDataCandles(100);
+            if (candles && candles.length > 10) {
+                state.historicalData = candles;
+                state.currentPrice = candles[candles.length - 1].close;
+                state.dataSource = 'live';
+                
+                document.getElementById('connection-status').innerHTML = 'LIVE • 12DATA';
+                document.getElementById('connection-status').className = 'font-medium text-emerald-400';
+                
+                updateUI();
+                showToast('Real-time data connected successfully!', 'success');
+            } else {
+                showToast('Failed to load real data. Using simulation.', 'error');
+            }
+        }
+
         // ==================== SIMULATION & LIVE UPDATE ====================
         function updateSimulation() {
+            // If using live data, fetch from Twelve Data instead of simulating
+            if (state.dataSource === 'live' && state.settings.apiKey) {
+                fetchTwelveDataPrice().then(realPrice => {
+                    if (realPrice && realPrice > 1000) {
+                        state.previousPrice = state.currentPrice;
+                        state.currentPrice = realPrice;
+                        
+                        // Update last candle
+                        const last = state.historicalData[state.historicalData.length - 1];
+                        if (last) {
+                            last.high = Math.max(last.high, realPrice);
+                            last.low = Math.min(last.low, realPrice);
+                            last.close = realPrice;
+                        }
+                        
+                        updateUI();
+                    }
+                });
+                return;
+            }
+            
+            // ==================== SIMULATION MODE ====================
             const data = state.historicalData;
             const lastCandle = data[data.length - 1];
             
             // Simulate realistic price movement
             const volatility = 0.9;
-            let drift = 0.012; // slight bullish drift in this regime
+            let drift = 0.012;
             
-            // Occasionally create stronger moves or reversals
             const rand = Math.random();
-            if (rand < 0.04) drift = 0.8;        // mini rocket
-            else if (rand > 0.96) drift = -0.65; // waterfall attempt
+            if (rand < 0.04) drift = 0.8;
+            else if (rand > 0.96) drift = -0.65;
             
             const change = (Math.random() - 0.485) * volatility + drift;
             let newPrice = state.currentPrice + change;
             
-            // Mean reversion tendency
             const meanPrice = 2655;
             if (Math.abs(newPrice - meanPrice) > 85) {
                 newPrice = state.currentPrice * 0.6 + meanPrice * 0.4;
@@ -1026,7 +1178,6 @@
             
             newPrice = parseFloat(Math.max(2570, Math.min(2750, newPrice)).toFixed(2));
             
-            // Update current candle
             lastCandle.high = Math.max(lastCandle.high, newPrice);
             lastCandle.low = Math.min(lastCandle.low, newPrice);
             lastCandle.close = newPrice;
@@ -1034,10 +1185,8 @@
             state.previousPrice = state.currentPrice;
             state.currentPrice = newPrice;
             
-            // New candle every ~60-90 seconds of real time (simulated 5m)
             const now = Date.now();
             if (now - lastCandle.time > 62000) {
-                // Close current candle and start new one
                 const newCandle = {
                     time: now,
                     open: newPrice,
@@ -1046,21 +1195,12 @@
                     close: newPrice
                 };
                 data.push(newCandle);
-                
-                // Keep only last 220 candles
                 if (data.length > 220) data.shift();
-                
-                // Occasionally inject interesting pattern
-                if (Math.random() < 0.08) {
-                    injectInterestingPattern(data);
-                }
             }
             
-            // Update everything
             updateUI();
             checkAutoTradeLogic();
             
-            // Save state periodically
             if (Math.random() < 0.15) saveState();
         }
 
@@ -1132,6 +1272,14 @@
             const todayEl = document.getElementById('today-pnl');
             todayEl.textContent = (state.todayPnL >= 0 ? '+' : '') + '$' + state.todayPnL.toFixed(2);
             todayEl.className = state.todayPnL >= 0 ? 'font-mono text-xl font-semibold tracking-tighter text-emerald-400' : 'font-mono text-xl font-semibold tracking-tighter text-red-400';
+            
+            // Update Daily Status
+            const dailyStatusEl = document.getElementById('daily-status');
+            if (dailyStatusEl) {
+                const maxLoss = (state.balance * (state.settings.maxDailyLossPercent / 100)).toFixed(0);
+                const lossColor = state.dailyPnL < 0 ? 'text-red-400' : 'text-emerald-400';
+                dailyStatusEl.innerHTML = `${state.dailyTradeCount}/${state.settings.maxTradesPerDay} trades • <span class="${lossColor}">$${Math.abs(state.dailyPnL).toFixed(1)} loss</span>`;
+            }
         }
 
         function updateIndicators(data) {
@@ -1191,6 +1339,7 @@
             const bestBadge = document.getElementById('best-moment-badge');
             const actionEl = document.getElementById('suggested-action');
             const entryEl = document.getElementById('suggested-entry');
+            const positionMessage = document.getElementById('position-open-message');
             
             confEl.textContent = consensus.confidence;
             
@@ -1230,21 +1379,30 @@
                 actionEl.textContent = 'WAIT';
                 actionEl.className = 'font-mono text-2xl font-semibold text-zinc-400';
             }
+
+            // Show clearer message if position is already open
+            if (state.openPosition && positionMessage) {
+                positionMessage.classList.remove('hidden');
+            } else if (positionMessage) {
+                positionMessage.classList.add('hidden');
+            }
             
             badge.className = badgeClass;
             entryEl.textContent = state.currentPrice.toFixed(2);
             
             // Auto enter if conditions met and auto enabled
-            if (state.settings.autoTrade && state.openPosition === null) {
-                if (consensus.signal === 'BUY' && consensus.confidence > 74 && consensus.isRocket) {
-                    // Auto enter long
-                    setTimeout(() => {
-                        if (!state.openPosition) autoEnterPosition('LONG', consensus.confidence, brain1.rocketScore);
-                    }, 800);
-                } else if (consensus.signal === 'SELL' && consensus.confidence > 72 && consensus.isWaterfall) {
-                    setTimeout(() => {
-                        if (!state.openPosition) autoEnterPosition('SHORT', consensus.confidence, brain2.waterfallScore);
-                    }, 800);
+            // Auto-send high quality signal to Telegram (for real trading) - only on very strong setups
+            if (consensus.confidence >= 80 && (consensus.isRocket || consensus.isWaterfall)) {
+                const type = consensus.signal === 'BUY' ? 'LONG' : 'SHORT';
+                const entry = state.currentPrice.toFixed(2);
+                const atr = calculateATR(data);
+                const slDistance = atr * 1.4;
+                let sl = (consensus.signal === 'BUY' ? state.currentPrice - slDistance : state.currentPrice + slDistance).toFixed(2);
+                let tp = (consensus.signal === 'BUY' ? state.currentPrice + slDistance * 2.3 : state.currentPrice - slDistance * 2.3).toFixed(2);
+                
+                // Only send if not sent recently
+                if (Date.now() - state.lastTelegramSent > 45000) {
+                    sendTradeAlert('SIGNAL', type, entry, sl, tp, consensus.confidence);
                 }
             }
         }
@@ -1276,6 +1434,19 @@
             
             document.getElementById('pos-entry').textContent = pos.entry.toFixed(2);
             document.getElementById('pos-time').textContent = getTimeAgo(pos.entryTime);
+            
+            // Show how long the trade has been open
+            const durationEl = document.getElementById('pos-duration');
+            if (durationEl) {
+                const mins = Math.floor((Date.now() - pos.entryTime) / 60000);
+                if (mins < 60) {
+                    durationEl.textContent = `${mins}m`;
+                } else {
+                    const hours = Math.floor(mins / 60);
+                    const remainingMins = mins % 60;
+                    durationEl.textContent = `${hours}h ${remainingMins}m`;
+                }
+            }
             
             const pnlEl = document.getElementById('pos-pnl');
             pnlEl.textContent = (unrealized >= 0 ? '+' : '') + '$' + unrealized.toFixed(2);
@@ -1396,13 +1567,154 @@
 
         function manualEnter(type) {
             if (state.openPosition) {
-                alert('Close current position first.');
+                showToast('Only one trade allowed at a time. Close the current position first.', 'error');
                 return;
             }
             const data = state.historicalData;
             const b1 = analyzeBrain1(data);
             const conf = type === 'LONG' ? b1.confidence : 70;
             autoEnterPosition(type, conf, b1.rocketScore || 65);
+        }
+
+        // ==================== LLM BRAIN 3 (OpenAI Compatible) ====================
+        async function callLLMBrain(marketSnapshot) {
+            if (!state.settings.groqApiKey) return null;
+            
+            const prompt = `You are an expert gold trader AI. Analyze this XAU/USD market data and give a clear trading decision.
+
+Current Price: ${marketSnapshot.price}
+Recent Trend: ${marketSnapshot.trend}
+RSI: ${marketSnapshot.rsi}
+Technical Signal: ${marketSnapshot.techSignal} (Confidence: ${marketSnapshot.techConf}%)
+Pattern Signal: ${marketSnapshot.patternSignal} (Confidence: ${marketSnapshot.patternConf}%)
+
+Give your answer in this exact format:
+DECISION: BUY or SELL or HOLD
+CONFIDENCE: number from 60 to 95
+REASON: one short sentence
+RISK: LOW, MEDIUM or HIGH
+
+Be strict. Only give BUY or SELL if you have strong conviction.`;
+
+            try {
+                // Works with Groq, OpenAI, Together, Fireworks, OpenRouter, etc.
+                const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${state.settings.groqApiKey}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        model: "llama-3.1-8b-instant",
+                        messages: [
+                            { role: "system", content: "You are a professional gold trading analyst. Be concise and accurate." },
+                            { role: "user", content: prompt }
+                        ],
+                        temperature: 0.3,
+                        max_tokens: 150
+                    })
+                });
+
+                const data = await response.json();
+                const text = data.choices?.[0]?.message?.content || "";
+                
+                // Parse the response
+                const decisionMatch = text.match(/DECISION:\s*(BUY|SELL|HOLD)/i);
+                const confMatch = text.match(/CONFIDENCE:\s*(\d+)/);
+                const reasonMatch = text.match(/REASON:\s*(.+)/i);
+                
+                const result = {
+                    decision: decisionMatch ? decisionMatch[1].toUpperCase() : 'HOLD',
+                    confidence: confMatch ? parseInt(confMatch[1]) : 60,
+                    reason: reasonMatch ? reasonMatch[1].trim() : 'No clear edge'
+                };
+                
+                state.lastLLMResult = result; // Save for display
+                return result;
+            } catch (e) {
+                console.log('Groq API error:', e);
+                return null;
+            }
+        }
+
+        // New function for Option 1 - High Quality Real Trading Signals (with Brain 3 LLM)
+        async function sendHighQualitySignal() {
+            const data = state.historicalData;
+            const brain1 = analyzeBrain1(data);
+            const brain2 = analyzeBrain2(data);
+            const consensus = getConsensus(brain1, brain2);
+            
+            // Only proceed if technical brains show strong setup
+            if (consensus.confidence < 75 || (!consensus.isRocket && !consensus.isWaterfall)) {
+                showToast('No high-probability setup right now. Waiting for stronger signal...', 'info');
+                return;
+            }
+            
+            // Enforce single trade rule
+            if (state.openPosition) {
+                showToast('Only one trade at a time is allowed.', 'error');
+                return;
+            }
+            
+            // Check daily risk limits
+            const limitCheck = checkDailyLimits();
+            if (!limitCheck.allowed) {
+                showToast(limitCheck.reason, 'error');
+                return;
+            }
+            
+            const type = consensus.signal === 'BUY' ? 'LONG' : 'SHORT';
+            const entry = state.currentPrice;
+            
+            // === BRAIN 3 (LLM Confirmation) ===
+            let llmDecision = null;
+            if (state.settings.groqApiKey && state.settings.brain3Enabled !== false) {
+                showToast('Brain 3 (AI) is analyzing the market...', 'info');
+                
+                const snapshot = {
+                    price: entry.toFixed(2),
+                    trend: brain1.ema9 > brain1.ema21 ? 'Bullish' : 'Bearish',
+                    rsi: brain1.rsi.toFixed(1),
+                    techSignal: brain1.signal,
+                    techConf: brain1.confidence,
+                    patternSignal: brain2.signal,
+                    patternConf: brain2.confidence
+                };
+                
+                llmDecision = await callLLMBrain(snapshot);
+            }
+            
+            // Final Decision - All 3 Brains must align
+            let finalConfidence = consensus.confidence;
+            let shouldSend = true;
+            
+            if (llmDecision) {
+                // Show Brain 3 result on dashboard
+                const badge = document.getElementById('brain3-badge');
+                const text = document.getElementById('brain3-text');
+                if (badge && text) {
+                    badge.classList.remove('hidden');
+                    text.innerHTML = `Brain 3: ${llmDecision.decision} (${llmDecision.confidence}%)`;
+                    state.lastLLMResult = llmDecision; // ensure stored
+                }
+                
+                if (llmDecision.decision !== type && llmDecision.confidence > 68) {
+                    showToast(`Brain 3 rejected ${type} signal`, 'error');
+                    shouldSend = false;
+                } else {
+                    finalConfidence = Math.min(95, Math.round((consensus.confidence + llmDecision.confidence) / 2));
+                }
+            }
+            
+            if (!shouldSend) return;
+            
+            const atr = calculateATR(data);
+            const slDistance = atr * 1.4;
+            let sl = (type === 'LONG' ? entry - slDistance : entry + slDistance).toFixed(2);
+            let tp = (type === 'LONG' ? entry + slDistance * 2.3 : entry - slDistance * 2.3).toFixed(2);
+            
+            sendTradeAlert('SIGNAL', type, entry.toFixed(2), sl, tp, finalConfidence);
+            showToast(`High-quality ${type} signal sent (3 Brains confirmed)`, 'success');
         }
 
         function closePosition(reason = 'Manual Close', exitPrice = null) {
@@ -1435,6 +1747,16 @@
             state.balance += pnl;
             state.todayPnL += pnl;
             
+            // Update daily tracking
+            const today = new Date().toDateString();
+            if (state.lastTradeDay !== today) {
+                state.dailyPnL = 0;
+                state.dailyTradeCount = 0;
+                state.lastTradeDay = today;
+            }
+            state.dailyPnL += pnl;
+            state.dailyTradeCount += 1;
+            
             // Telegram exit alert
             sendTradeAlert('EXIT', pos.type, pos.entry, exit, pnl, pos.confidenceAtEntry, reason);
             
@@ -1447,9 +1769,31 @@
             showToast(`${reason} • P&L: $${pnl.toFixed(2)} (${rMultiple}R)`, pnl > 0 ? 'success' : 'error');
         }
 
+        function checkDailyLimits() {
+            const today = new Date().toDateString();
+            
+            // Reset daily counters if new day
+            if (state.lastTradeDay !== today) {
+                state.dailyPnL = 0;
+                state.dailyTradeCount = 0;
+                state.lastTradeDay = today;
+            }
+            
+            const maxLoss = state.balance * (state.settings.maxDailyLossPercent / 100);
+            
+            if (state.dailyPnL <= -maxLoss) {
+                return { allowed: false, reason: `Daily loss limit reached (-${state.settings.maxDailyLossPercent}%)` };
+            }
+            
+            if (state.dailyTradeCount >= state.settings.maxTradesPerDay) {
+                return { allowed: false, reason: `Max ${state.settings.maxTradesPerDay} trades per day reached` };
+            }
+            
+            return { allowed: true };
+        }
+
         function checkAutoTradeLogic() {
             // This is called in update loop. Main logic is inside updateMasterSignal for entries.
-            // Additional safety: if position open too long without movement, etc. (can expand)
         }
 
         // ==================== CHART ====================
@@ -1466,30 +1810,33 @@
                         {
                             label: 'Price',
                             data: [],
-                            borderColor: '#f4d35e',
-                            borderWidth: 2.5,
-                            tension: 0.25,
+                            borderColor: '#22c55e',
+                            borderWidth: 2,
+                            tension: 0.1,
                             pointRadius: 0,
-                            pointHoverRadius: 3,
-                            yAxisID: 'y'
+                            pointHoverRadius: 4,
+                            yAxisID: 'y',
+                            segment: {
+                                borderColor: ctx => ctx.p0.parsed.y > ctx.p1.parsed.y ? '#ef4444' : '#22c55e'
+                            }
                         },
                         {
                             label: 'EMA 9',
                             data: [],
-                            borderColor: '#60a5fa',
+                            borderColor: '#3b82f6',
                             borderWidth: 1.5,
                             borderDash: [2, 2],
-                            tension: 0.3,
+                            tension: 0.2,
                             pointRadius: 0,
                             yAxisID: 'y'
                         },
                         {
                             label: 'EMA 21',
                             data: [],
-                            borderColor: '#c026ff',
+                            borderColor: '#a855f7',
                             borderWidth: 1.5,
                             borderDash: [3, 3],
-                            tension: 0.3,
+                            tension: 0.2,
                             pointRadius: 0,
                             yAxisID: 'y'
                         }
@@ -1498,22 +1845,32 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    animation: { duration: 420, easing: 'easeOutQuart' },
+                    animation: { duration: 300 },
                     plugins: {
                         legend: { display: false },
-                        tooltip: { mode: 'index', intersect: false, displayColors: false }
+                        tooltip: { 
+                            mode: 'index', 
+                            intersect: false, 
+                            displayColors: false,
+                            backgroundColor: '#18181b',
+                            borderColor: '#3f3f46',
+                            borderWidth: 1
+                        }
                     },
                     scales: {
                         x: {
                             grid: { color: '#27272a', lineWidth: 0.5 },
-                            ticks: { color: '#52525b', font: { size: 9 }, maxTicksLimit: 8 }
+                            ticks: { color: '#71717a', font: { size: 10 }, maxTicksLimit: 7 }
                         },
                         y: {
                             grid: { color: '#27272a', lineWidth: 0.5 },
-                            ticks: { color: '#52525b', font: { size: 10 }, callback: v => v.toFixed(0) }
+                            ticks: { color: '#71717a', font: { size: 11 }, callback: v => v.toFixed(0) }
                         }
                     },
-                    interaction: { intersect: false, mode: 'nearest' }
+                    interaction: { intersect: false, mode: 'nearest' },
+                    elements: {
+                        line: { borderJoinStyle: 'round' }
+                    }
                 }
             });
             
@@ -1566,28 +1923,42 @@
 
         // ==================== TELEGRAM ====================
         async function sendTradeAlert(action, type, entry, slOrExit, tpOrPnl, confidence, extraReason = '') {
-            if (!state.settings.telegramToken || !state.settings.telegramChatId) return;
+            if (!state.settings.telegramToken || !state.settings.telegramChatId) {
+                showToast('Please set Telegram Token & Chat ID in Settings first', 'error');
+                return;
+            }
             
             const now = Date.now();
-            if (now - state.lastTelegramSent < 25000) return; // rate limit alerts
+            if (now - state.lastTelegramSent < 20000) return; // rate limit
             
             let message = '';
             const symbol = 'XAU/USD';
+            const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             
-            if (action === 'ENTRY') {
-                message = `🚀 <b>GOLDFORGE ${type} ENTRY</b>\n` +
-                          `Symbol: <b>${symbol}</b>\n` +
-                          `Entry: <b>${entry}</b>\n` +
-                          `SL: <b>${slOrExit}</b> | TP: <b>${tpOrPnl}</b>\n` +
-                          `Confidence: <b>${confidence}%</b>\n` +
-                          `Time: ${new Date().toLocaleTimeString()}`;
+            if (action === 'SIGNAL') {
+                // High quality manual signal for real trading
+                const directionEmoji = type === 'LONG' ? '🟢' : '🔴';
+                const modeEmoji = confidence >= 82 ? '🚀' : '⚡';
+                
+                message = `${modeEmoji} <b>GOLDFORGE HIGH-PROBABILITY SIGNAL</b>\n\n` +
+                          `${directionEmoji} <b>${type} ${symbol}</b>\n` +
+                          `━━━━━━━━━━━━━━━━━━━━\n` +
+                          `📍 <b>Entry:</b> ${entry}\n` +
+                          `🛡️ <b>Stop Loss:</b> ${slOrExit}\n` +
+                          `🎯 <b>Take Profit:</b> ${tpOrPnl}\n` +
+                          `📊 <b>Risk : Reward</b> ≈ 1 : 2.3\n` +
+                          `🔥 <b>Confidence:</b> ${confidence}%\n` +
+                          `━━━━━━━━━━━━━━━━━━━━\n` +
+                          `⏰ ${currentTime} | GoldForge DualBrain AI`;
+                          
+            } else if (action === 'ENTRY') {
+                message = `🚀 <b>GOLDFORGE ${type} ENTRY</b> (Simulation)\n` +
+                          `Entry: <b>${entry}</b> | SL: <b>${slOrExit}</b> | TP: <b>${tpOrPnl}</b>\n` +
+                          `Confidence: <b>${confidence}%</b>`;
             } else if (action === 'EXIT') {
-                const pnlSign = tpOrPnl >= 0 ? '✅ PROFIT' : '❌ LOSS';
-                message = `${pnlSign} <b>GOLDFORGE ${type} EXIT</b>\n` +
-                          `Entry → Exit: <b>${entry} → ${slOrExit}</b>\n` +
-                          `P&amp;L: <b>$${tpOrPnl}</b> (${extraReason})\n` +
-                          `Reason: ${extraReason || 'AI Signal'}\n` +
-                          `Time: ${new Date().toLocaleTimeString()}`;
+                const pnlSign = tpOrPnl >= 0 ? '✅' : '❌';
+                message = `${pnlSign} <b>GOLDFORGE ${type} CLOSED</b>\n` +
+                          `P&amp;L: <b>$${tpOrPnl}</b> | Reason: ${extraReason}`;
             }
             
             try {
@@ -1602,8 +1973,12 @@
                     })
                 });
                 state.lastTelegramSent = now;
+                if (action === 'SIGNAL') {
+                    showToast('High-quality signal sent to Telegram!', 'success');
+                }
             } catch (e) {
-                console.log('Telegram send failed (non-critical)');
+                console.log('Telegram send failed');
+                showToast('Failed to send Telegram message', 'error');
             }
         }
 
@@ -1677,6 +2052,30 @@
             // Avg R:R
             const avgRR = trades.length > 0 ? (trades.reduce((s, t) => s + (t.rMultiple || 1), 0) / trades.length).toFixed(1) : '1.0';
             document.getElementById('metric-rr').textContent = '1:' + avgRR;
+
+            // === Brain 3 Win Rate Comparison ===
+            const withBrain3 = trades.filter(t => t.usedBrain3 === true);
+            const withoutBrain3 = trades.filter(t => t.usedBrain3 === false);
+
+            const winrateBrain3El = document.getElementById('metric-winrate-brain3');
+            const winrateNoBrain3El = document.getElementById('metric-winrate-no-brain3');
+
+            if (withBrain3.length > 0) {
+                const winsB3 = withBrain3.filter(t => t.pnl > 0).length;
+                const wrB3 = Math.round((winsB3 / withBrain3.length) * 100);
+                winrateBrain3El.textContent = wrB3 + '%';
+                winrateBrain3El.className = 'font-mono text-2xl font-semibold text-purple-400';
+            } else {
+                winrateBrain3El.textContent = '—';
+            }
+
+            if (withoutBrain3.length > 0) {
+                const winsNoB3 = withoutBrain3.filter(t => t.pnl > 0).length;
+                const wrNoB3 = Math.round((winsNoB3 / withoutBrain3.length) * 100);
+                winrateNoBrain3El.textContent = wrNoB3 + '%';
+            } else {
+                winrateNoBrain3El.textContent = '—';
+            }
         }
 
         function renderTradeLog() {
@@ -1737,7 +2136,7 @@
             localStorage.removeItem('goldforge_state_v2');
             
             // Reset state
-            state.balance = 10000;
+            state.balance = 100;
             state.todayPnL = 0;
             state.tradeHistory = [];
             state.openPosition = null;
@@ -1763,6 +2162,16 @@
             document.getElementById('setting-telegram-token').value = state.settings.telegramToken || '';
             document.getElementById('setting-telegram-chat').value = state.settings.telegramChatId || '';
             document.getElementById('setting-apikey').value = state.settings.apiKey || '';
+            document.getElementById('setting-groq-key').value = state.settings.groqApiKey || '';
+            if (document.getElementById('setting-brain3-toggle')) {
+                document.getElementById('setting-brain3-toggle').checked = state.settings.brain3Enabled !== false;
+            }
+            if (document.getElementById('setting-max-daily-loss')) {
+                document.getElementById('setting-max-daily-loss').value = state.settings.maxDailyLossPercent || 8;
+            }
+            if (document.getElementById('setting-max-trades-day')) {
+                document.getElementById('setting-max-trades-day').value = state.settings.maxTradesPerDay || 5;
+            }
         }
 
         function hideSettingsModal() {
@@ -1772,13 +2181,16 @@
         }
 
         function saveSettings() {
-            state.settings.startingCapital = parseFloat(document.getElementById('setting-capital').value) || 10000;
-            state.settings.riskPerTrade = parseFloat(document.getElementById('setting-risk').value) || 1;
+            state.settings.startingCapital = parseFloat(document.getElementById('setting-capital').value) || 100;
+            state.settings.riskPerTrade = parseFloat(document.getElementById('setting-risk').value) || 2;
             state.settings.telegramToken = document.getElementById('setting-telegram-token').value.trim();
             state.settings.telegramChatId = document.getElementById('setting-telegram-chat').value.trim();
             state.settings.apiKey = document.getElementById('setting-apikey').value.trim();
+            state.settings.groqApiKey = document.getElementById('setting-groq-key').value.trim();
+            state.settings.brain3Enabled = document.getElementById('setting-brain3-toggle').checked;
+            state.settings.maxDailyLossPercent = parseFloat(document.getElementById('setting-max-daily-loss').value) || 8;
+            state.settings.maxTradesPerDay = parseInt(document.getElementById('setting-max-trades-day').value) || 5;
             
-            // If user provided key, we could switch but for now keep sim (user can enhance later)
             if (state.settings.apiKey) {
                 document.getElementById('connection-status').innerHTML = 'LIVE READY';
                 document.getElementById('connection-status').className = 'font-medium text-amber-400';
@@ -1793,6 +2205,36 @@
         }
 
         // ==================== UTILS ====================
+        function showBrain3Reason() {
+            if (!state.lastLLMResult) {
+                showToast('No Brain 3 analysis yet', 'info');
+                return;
+            }
+            
+            const result = state.lastLLMResult;
+            const msg = `Brain 3 Decision: <b>${result.decision}</b> (${result.confidence}%)\n\nReason: ${result.reason}`;
+            
+            // Show in a nice toast
+            const toast = document.createElement('div');
+            toast.className = `fixed bottom-5 left-1/2 -translate-x-1/2 max-w-md px-5 py-4 rounded-2xl shadow-xl text-sm bg-zinc-900 border border-purple-500/30 z-[200]`;
+            toast.innerHTML = `
+                <div class="flex items-start gap-x-3">
+                    <i class="fa-solid fa-robot text-purple-400 mt-1"></i>
+                    <div class="flex-1 text-zinc-200">
+                        <div class="font-semibold mb-1">Brain 3 Analysis</div>
+                        <div class="text-xs leading-relaxed whitespace-pre-line">${msg}</div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.transition = 'all 0.3s ease';
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 200);
+            }, 4500);
+        }
+
         function showToast(message, type = 'success') {
             const toast = document.createElement('div');
             toast.className = `fixed bottom-5 right-5 px-5 py-3 rounded-2xl shadow-xl text-sm flex items-center gap-x-3 z-[200] ${type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-red-600' : 'bg-zinc-700'}`;
@@ -1829,6 +2271,13 @@
             // Initial UI
             document.getElementById('balance-display').textContent = '$' + state.balance.toLocaleString('en-US', {minimumFractionDigits: 2});
             
+            // Try to connect to real data if API key exists
+            if (state.settings.apiKey && state.settings.useLiveData) {
+                setTimeout(() => {
+                    switchToLiveData();
+                }, 1500);
+            }
+            
             // Seed some demo trades if none exist
             if (state.tradeHistory.length === 0) {
                 // Add 4-5 sample past trades for nice demo
@@ -1838,7 +2287,7 @@
                     {id:3, entryTime: Date.now()-1000*60*55, exitTime: Date.now()-1000*60*20, type:'SHORT', entry:2671.8, exit:2648.4, pnl: 132.8, rMultiple:1.8, reason:'Waterfall Signal', confidence:79},
                 ];
                 state.tradeHistory = demoTrades;
-                state.balance = 10000 + demoTrades.reduce((s,t)=>s+t.pnl,0);
+                state.balance = 100 + demoTrades.reduce((s,t)=>s+t.pnl,0);
                 state.todayPnL = 142.8;
             }
             
