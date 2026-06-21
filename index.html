@@ -1,0 +1,1890 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GoldForge • DualBrain AI Trading Agent</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap');
+        
+        :root {
+            --gold: #f4d35e;
+            --dark-gold: #d4af37;
+        }
+        
+        body {
+            font-family: 'Inter', system_ui, sans-serif;
+        }
+        
+        .font-display {
+            font-family: 'Space Grotesk', 'Inter', sans-serif;
+            font-weight: 600;
+        }
+
+        .gold-gradient {
+            background: linear-gradient(135deg, #f4d35e 0%, #d4af37 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .trading-card {
+            background: #111113;
+            border: 1px solid #27272a;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .trading-card:hover {
+            border-color: #3f3f46;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+        }
+
+        .section-header {
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+            color: #a1a1aa;
+        }
+
+        .price-ticker {
+            font-variant-numeric: tabular-nums;
+            font-feature-settings: "tnum";
+        }
+
+        .metric-value {
+            font-variant-numeric: tabular-nums;
+        }
+
+        .brain-card {
+            background: #0a0a0b;
+            border: 1px solid #27272a;
+        }
+
+        .signal-badge {
+            padding: 4px 14px;
+            border-radius: 9999px;
+            font-weight: 700;
+            font-size: 0.75rem;
+            letter-spacing: -.5px;
+        }
+
+        .nav-active {
+            border-bottom: 2px solid #f4d35e;
+            color: white;
+        }
+
+        .trade-row {
+            transition: background-color 0.1s ease;
+        }
+
+        .trade-row:hover {
+            background-color: #18181b;
+        }
+
+        .gold-text {
+            color: #f4d35e;
+        }
+
+        .mono {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+
+        .live-dot {
+            animation: pulse-live 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse-live {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .trading-table {
+            font-size: 0.875rem;
+        }
+
+        .indicator-value {
+            font-variant-numeric: tabular-nums;
+        }
+
+        .momentum-bar {
+            height: 6px;
+            background: linear-gradient(to right, #f4d35e, #eab308);
+            border-radius: 9999px;
+            transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .chart-container {
+            position: relative;
+        }
+
+        .ai-reason {
+            font-size: 0.75rem;
+            line-height: 1.4;
+        }
+
+        .status-pill {
+            font-size: 10px;
+            padding: 1px 8px;
+            border-radius: 9999px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body class="bg-zinc-950 text-zinc-200">
+    <!-- Navbar -->
+    <nav class="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-lg sticky top-0 z-50">
+        <div class="max-w-screen-2xl mx-auto">
+            <div class="px-6 py-3 flex items-center justify-between">
+                <div class="flex items-center gap-x-3">
+                    <!-- Logo -->
+                    <div class="flex items-center gap-x-2.5">
+                        <div class="w-9 h-9 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-2xl flex items-center justify-center shadow-inner">
+                            <i class="fa-solid fa-chart-line text-zinc-950 text-3xl font-black"></i>
+                        </div>
+                        <div>
+                            <span class="font-display text-3xl tracking-tighter font-semibold">Gold</span>
+                            <span class="font-display text-3xl tracking-tighter font-semibold gold-gradient">Forge</span>
+                            <span class="text-[10px] font-mono tracking-[2px] text-amber-400/70 ml-0.5">AI</span>
+                        </div>
+                    </div>
+                    <div class="hidden md:flex items-center gap-x-1.5 pl-3 border-l border-zinc-800">
+                        <div class="px-3 py-1 bg-zinc-900 rounded-3xl flex items-center gap-x-2 text-xs">
+                            <div class="w-2 h-2 bg-emerald-400 rounded-full live-dot"></div>
+                            <span id="connection-status" class="font-medium text-emerald-400">SIM LIVE</span>
+                        </div>
+                        <div class="text-[10px] px-2.5 py-1 bg-zinc-900 rounded-3xl text-zinc-400 font-mono">v2.4 • DUAL BRAIN</div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-x-4">
+                    <!-- Account Summary -->
+                    <div class="hidden lg:flex items-center gap-x-6 text-sm">
+                        <div>
+                            <div class="text-xs text-zinc-400">VIRTUAL CAPITAL</div>
+                            <div id="balance-display" class="font-mono text-xl font-semibold tracking-tighter">$10,000.00</div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-zinc-400">TODAY'S P&amp;L</div>
+                            <div id="today-pnl" class="font-mono text-xl font-semibold tracking-tighter text-emerald-400">+$142.80</div>
+                        </div>
+                    </div>
+
+                    <!-- Auto Trade Toggle -->
+                    <div class="flex items-center gap-x-3 bg-zinc-900 border border-zinc-800 rounded-3xl p-1 pr-4">
+                        <div class="flex items-center gap-x-2 px-3">
+                            <i class="fa-solid fa-robot text-amber-400"></i>
+                            <span class="text-sm font-medium">AUTO TRADE</span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="auto-trade-toggle" class="sr-only peer" checked>
+                            <div class="w-11 h-6 bg-zinc-700 peer-focus:outline-none peer-focus:ring-0 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                    </div>
+
+                    <button onclick="showSettingsModal()" 
+                            class="flex items-center gap-x-2 px-4 py-2 text-sm font-medium bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-zinc-600 transition-colors rounded-3xl">
+                        <i class="fa-solid fa-cog"></i>
+                        <span class="hidden md:inline">Settings</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-screen-2xl mx-auto px-6 pt-5 pb-8">
+        
+        <!-- Market Header -->
+        <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-y-3 mb-5">
+            <div>
+                <div class="flex items-center gap-x-3">
+                    <h1 class="text-4xl font-display tracking-tighter font-semibold">XAU/USD <span class="text-amber-400">Gold</span></h1>
+                    <div id="market-regime" 
+                         class="px-4 py-1 text-xs font-bold tracking-wider rounded-3xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-x-1.5">
+                        <i class="fa-solid fa-trending-up"></i>
+                        <span>STRONG UPTREND</span>
+                    </div>
+                </div>
+                <p class="text-zinc-400 text-sm mt-0.5">Real-time • Dual AI Brain Analysis • Simulated Execution</p>
+            </div>
+            
+            <!-- Live Price -->
+            <div class="flex items-baseline gap-x-4">
+                <div>
+                    <div id="current-price" 
+                         class="font-mono text-6xl font-semibold tracking-tighter price-ticker">2658.45</div>
+                    <div class="flex items-center gap-x-2 mt-1">
+                        <div id="price-change" 
+                             class="inline-flex items-center gap-x-1 px-3 py-0.5 rounded-2xl text-sm font-semibold bg-emerald-500/10 text-emerald-400">
+                            <i class="fa-solid fa-arrow-up"></i>
+                            <span id="price-change-value">+18.72</span>
+                            <span id="price-change-pct">(+0.71%)</span>
+                        </div>
+                        <div class="text-xs text-zinc-500 font-mono">24h • High: <span id="day-high">2681.90</span> • Low: <span id="day-low">2639.10</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
+            
+            <!-- Chart + Indicators -->
+            <div class="xl:col-span-7 trading-card rounded-3xl p-5">
+                <div class="flex items-center justify-between mb-4 px-1">
+                    <div>
+                        <span class="section-header">LIVE MARKET VIEW • 5M CHART</span>
+                    </div>
+                    <div class="flex items-center gap-x-1 text-xs">
+                        <button onclick="switchTimeframe('5m')" id="tf-5m"
+                                class="px-3 py-1 rounded-2xl bg-zinc-800 text-white text-xs font-medium">5m</button>
+                        <button onclick="switchTimeframe('15m')" id="tf-15m"
+                                class="px-3 py-1 rounded-2xl hover:bg-zinc-800 text-zinc-400 text-xs font-medium">15m</button>
+                        <button onclick="switchTimeframe('1h')" id="tf-1h"
+                                class="px-3 py-1 rounded-2xl hover:bg-zinc-800 text-zinc-400 text-xs font-medium">1H</button>
+                        <button onclick="switchTimeframe('4h')" id="tf-4h"
+                                class="px-3 py-1 rounded-2xl hover:bg-zinc-800 text-zinc-400 text-xs font-medium">4H</button>
+                    </div>
+                </div>
+                
+                <!-- Chart -->
+                <div class="chart-container h-[280px] mb-4 bg-zinc-950 rounded-2xl p-3 border border-zinc-800">
+                    <canvas id="price-chart"></canvas>
+                </div>
+                
+                <!-- Indicator Strip -->
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs">
+                    <div class="bg-zinc-900/70 rounded-2xl px-3.5 py-2.5 border border-zinc-800">
+                        <div class="flex justify-between items-center">
+                            <div class="text-zinc-400">EMA 9 / 21</div>
+                            <div id="ema-values" class="font-mono text-right text-emerald-400">2654.2 <span class="text-zinc-500">/</span> 2649.8</div>
+                        </div>
+                    </div>
+                    <div class="bg-zinc-900/70 rounded-2xl px-3.5 py-2.5 border border-zinc-800">
+                        <div class="flex justify-between items-center">
+                            <div class="text-zinc-400">RSI (14)</div>
+                            <div id="rsi-value" class="font-mono text-emerald-400">61.4</div>
+                        </div>
+                    </div>
+                    <div class="bg-zinc-900/70 rounded-2xl px-3.5 py-2.5 border border-zinc-800">
+                        <div class="flex justify-between items-center">
+                            <div class="text-zinc-400">MACD Hist</div>
+                            <div id="macd-value" class="font-mono text-emerald-400">+4.82</div>
+                        </div>
+                    </div>
+                    <div class="bg-zinc-900/70 rounded-2xl px-3.5 py-2.5 border border-zinc-800">
+                        <div class="flex justify-between items-center">
+                            <div class="text-zinc-400">ATR (14)</div>
+                            <div id="atr-value" class="font-mono">18.4</div>
+                        </div>
+                    </div>
+                    <div class="bg-zinc-900/70 rounded-2xl px-3.5 py-2.5 border border-zinc-800 col-span-2 md:col-span-1">
+                        <div class="flex justify-between items-center">
+                            <div class="text-zinc-400 text-[10px]">MOMENTUM</div>
+                            <div id="momentum-score" class="font-mono font-bold text-lg leading-none text-emerald-400">78</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dual AI Brains -->
+            <div class="xl:col-span-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-5">
+                
+                <!-- Brain 1 -->
+                <div class="brain-card rounded-3xl p-4 border border-zinc-800">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-x-2">
+                            <div class="w-8 h-8 bg-blue-500/10 text-blue-400 rounded-2xl flex items-center justify-center">
+                                <i class="fa-solid fa-chart-bar text-lg"></i>
+                            </div>
+                            <div>
+                                <div class="font-semibold text-sm">BRAIN 1 • Technical Strategist</div>
+                                <div class="text-[10px] text-zinc-500">Multi-timeframe • Indicators</div>
+                            </div>
+                        </div>
+                        <div id="brain1-status" class="status-pill bg-emerald-500/10 text-emerald-400">LIVE</div>
+                    </div>
+                    
+                    <div class="flex items-center gap-x-3 mb-3">
+                        <div id="brain1-signal" 
+                             class="signal-badge bg-emerald-500 text-white flex items-center gap-x-1.5 px-4 py-1 text-sm">
+                            <i class="fa-solid fa-arrow-trend-up"></i>
+                            <span>BUY</span>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-zinc-400">Confidence</span>
+                                <span id="brain1-conf" class="font-mono font-bold">84%</span>
+                            </div>
+                            <div class="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                                <div id="brain1-conf-bar" class="h-2 bg-emerald-400 rounded-full transition-all" style="width: 84%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-xs">
+                        <div class="text-zinc-400 mb-1.5 font-medium">KEY CONFLUENCES</div>
+                        <ul id="brain1-reasons" class="space-y-1 text-zinc-300 ai-reason">
+                            <!-- Populated by JS -->
+                        </ul>
+                    </div>
+                    
+                    <div class="mt-3 pt-3 border-t border-zinc-800 flex items-center justify-between text-xs">
+                        <div>
+                            <span class="text-zinc-400">Rocket Score</span>
+                            <span id="brain1-rocket" class="ml-1.5 font-mono font-bold text-amber-400">87</span>
+                        </div>
+                        <div class="text-emerald-400 text-xs flex items-center gap-x-1">
+                            <i class="fa-solid fa-check-double"></i>
+                            <span>H1 Bias: Bullish</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Brain 2 -->
+                <div class="brain-card rounded-3xl p-4 border border-zinc-800">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-x-2">
+                            <div class="w-8 h-8 bg-purple-500/10 text-purple-400 rounded-2xl flex items-center justify-center">
+                                <i class="fa-solid fa-project-diagram text-lg"></i>
+                            </div>
+                            <div>
+                                <div class="font-semibold text-sm">BRAIN 2 • Pattern &amp; Momentum</div>
+                                <div class="text-[10px] text-zinc-500">Candlestick • SR • Breakouts</div>
+                            </div>
+                        </div>
+                        <div id="brain2-status" class="status-pill bg-emerald-500/10 text-emerald-400">LIVE</div>
+                    </div>
+                    
+                    <div class="flex items-center gap-x-3 mb-3">
+                        <div id="brain2-signal" 
+                             class="signal-badge bg-emerald-500 text-white flex items-center gap-x-1.5 px-4 py-1 text-sm">
+                            <i class="fa-solid fa-arrow-trend-up"></i>
+                            <span>BUY</span>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-zinc-400">Confidence</span>
+                                <span id="brain2-conf" class="font-mono font-bold">79%</span>
+                            </div>
+                            <div class="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                                <div id="brain2-conf-bar" class="h-2 bg-purple-400 rounded-full transition-all" style="width: 79%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-xs">
+                        <div class="text-zinc-400 mb-1.5 font-medium">DETECTED PATTERNS &amp; MOMENTUM</div>
+                        <ul id="brain2-reasons" class="space-y-1 text-zinc-300 ai-reason">
+                            <!-- Populated by JS -->
+                        </ul>
+                    </div>
+                    
+                    <div class="mt-3 pt-3 border-t border-zinc-800 flex items-center justify-between text-xs">
+                        <div>
+                            <span class="text-zinc-400">Waterfall Score</span>
+                            <span id="brain2-waterfall" class="ml-1.5 font-mono font-bold text-red-400">19</span>
+                        </div>
+                        <div class="text-emerald-400 text-xs flex items-center gap-x-1">
+                            <i class="fa-solid fa-bolt"></i>
+                            <span>Bullish Engulfing + Breakout</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Master Signal + Action -->
+            <div class="xl:col-span-5 trading-card rounded-3xl p-5 border border-amber-400/20">
+                <div class="section-header mb-3 px-1">MASTER CONSENSUS SIGNAL</div>
+                
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div id="master-signal-badge" 
+                             class="inline-flex items-center gap-x-3 px-6 py-2.5 rounded-3xl bg-emerald-500 text-white text-xl font-bold tracking-tighter shadow-inner">
+                            <i class="fa-solid fa-rocket"></i>
+                            <span id="master-signal-text">STRONG BUY — ROCKET MODE</span>
+                        </div>
+                        <div class="mt-2 flex items-center gap-x-2">
+                            <div class="text-xs px-3 py-1 bg-zinc-900 rounded-2xl text-emerald-400 font-mono">CONFIDENCE <span id="master-conf">82</span>%</div>
+                            <div id="best-moment-badge" 
+                                 class="hidden items-center gap-x-1.5 text-xs px-3 py-1 bg-amber-400 text-zinc-950 font-bold rounded-2xl">
+                                <i class="fa-solid fa-bolt-lightning"></i>
+                                <span>BEST MOMENT TO ENTER</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-right">
+                        <div class="text-xs text-zinc-400">SUGGESTED</div>
+                        <div id="suggested-action" class="font-mono text-2xl font-semibold text-emerald-400">LONG</div>
+                        <div class="text-xs text-emerald-400/70">Entry @ <span id="suggested-entry">2658.40</span></div>
+                    </div>
+                </div>
+                
+                <div class="mt-4 grid grid-cols-3 gap-3 text-xs">
+                    <div onclick="if(confirm('Execute manual LONG entry?')) manualEnter('LONG')" 
+                         class="cursor-pointer flex flex-col items-center justify-center py-3 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-2xl transition-colors">
+                        <div class="font-bold text-emerald-400">MANUAL LONG</div>
+                        <div class="text-emerald-400/60 text-xs">1% Risk</div>
+                    </div>
+                    <div onclick="if(confirm('Execute manual SHORT entry?')) manualEnter('SHORT')" 
+                         class="cursor-pointer flex flex-col items-center justify-center py-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded-2xl transition-colors">
+                        <div class="font-bold text-red-400">MANUAL SHORT</div>
+                        <div class="text-red-400/60 text-xs">1% Risk</div>
+                    </div>
+                    <div onclick="closePosition()" 
+                         class="cursor-pointer flex flex-col items-center justify-center py-3 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-2xl transition-colors">
+                        <div class="font-bold">CLOSE POSITION</div>
+                        <div class="text-zinc-400 text-xs">If open</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Position -->
+            <div class="xl:col-span-7 trading-card rounded-3xl p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="section-header">ACTIVE POSITION • SIMULATED</div>
+                    <div id="position-status-pill" class="px-3 py-1 text-xs font-medium rounded-3xl bg-zinc-800 text-zinc-400">NO OPEN POSITION</div>
+                </div>
+                
+                <div id="position-details" class="hidden">
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-y-4">
+                        <div>
+                            <div class="text-xs text-zinc-400">DIRECTION</div>
+                            <div id="pos-direction" class="font-bold text-2xl text-emerald-400">LONG</div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-zinc-400">ENTRY PRICE</div>
+                            <div id="pos-entry" class="font-mono text-xl font-semibold">2651.80</div>
+                            <div id="pos-time" class="text-xs text-zinc-500">12m ago</div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-zinc-400">CURRENT P&amp;L</div>
+                            <div id="pos-pnl" class="font-mono text-3xl font-bold text-emerald-400">+$187.40</div>
+                            <div id="pos-pnl-pct" class="text-emerald-400 text-sm">(+1.41R)</div>
+                        </div>
+                        <div>
+                            <div class="text-xs text-zinc-400">STOP LOSS</div>
+                            <div id="pos-sl" class="font-mono">2642.50 <span class="text-xs text-zinc-500">(−9.3)</span></div>
+                            <div class="text-xs text-zinc-400 mt-2">TAKE PROFIT</div>
+                            <div id="pos-tp" class="font-mono">2674.10 <span class="text-xs text-emerald-400">(+2.4R)</span></div>
+                        </div>
+                        <div class="flex flex-col justify-between">
+                            <div>
+                                <div class="text-xs text-zinc-400 mb-1">AUTO MANAGEMENT</div>
+                                <div class="text-xs px-2.5 py-1 bg-emerald-500/10 text-emerald-400 rounded-2xl w-fit">Trailing • Monitoring exit signals</div>
+                            </div>
+                            <button onclick="closePosition()" 
+                                    class="mt-auto text-xs font-bold px-4 py-2 bg-red-500/90 hover:bg-red-600 transition text-white rounded-2xl w-full">
+                                CLOSE NOW
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="no-position-state" class="py-6 text-center">
+                    <div class="mx-auto w-10 h-10 bg-zinc-900 rounded-2xl flex items-center justify-center mb-3">
+                        <i class="fa-solid fa-hourglass-half text-zinc-400"></i>
+                    </div>
+                    <p class="text-sm text-zinc-400">No open position. Agent is scanning for high-probability <span class="text-amber-400">Rocket</span> or <span class="text-red-400">Waterfall</span> setups.</p>
+                </div>
+            </div>
+
+            <!-- Trading Guide -->
+            <div class="xl:col-span-5 trading-card rounded-3xl p-5 text-sm">
+                <div class="section-header mb-3">TRADING GUIDE • WHEN TO ACT</div>
+                
+                <div class="space-y-4 text-xs">
+                    <div>
+                        <div class="font-semibold text-emerald-400 flex items-center gap-x-2 mb-1">
+                            <i class="fa-solid fa-sign-in-alt"></i> 
+                            <span>ENTER LONG (Rocket)</span>
+                        </div>
+                        <div class="text-zinc-400 pl-6">Both brains agree BUY + Rocket Score &gt; 75 + price above key EMAs + bullish pattern confirmation. Best entries on pullbacks to 9/21 EMA in uptrend.</div>
+                    </div>
+                    <div>
+                        <div class="font-semibold text-red-400 flex items-center gap-x-2 mb-1">
+                            <i class="fa-solid fa-sign-out-alt"></i> 
+                            <span>ENTER SHORT (Waterfall)</span>
+                        </div>
+                        <div class="text-zinc-400 pl-6">Consensus SELL + Waterfall Score &gt; 70 + breakdown below support. Avoid counter-trend unless very strong confluence.</div>
+                    </div>
+                    <div>
+                        <div class="font-semibold text-amber-400 flex items-center gap-x-2 mb-1">
+                            <i class="fa-solid fa-clock"></i> 
+                            <span>HOLD RULES</span>
+                        </div>
+                        <div class="text-zinc-400 pl-6">Stay in trade while momentum remains aligned. Trail SL to breakeven after +1R. Exit only on opposite brain consensus or TP/SL hit.</div>
+                    </div>
+                    <div>
+                        <div class="font-semibold text-zinc-300 flex items-center gap-x-2 mb-1">
+                            <i class="fa-solid fa-door-open"></i> 
+                            <span>EXIT SIGNAL</span>
+                        </div>
+                        <div class="text-zinc-400 pl-6">Strong opposite signal from both brains, or price action invalidates setup (e.g. failed breakout). Telegram alert sent automatically.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Performance & History -->
+            <div class="xl:col-span-12 trading-card rounded-3xl p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="section-header">PERFORMANCE &amp; TRADE LOG • EVALUATION</div>
+                    <div class="flex items-center gap-x-2">
+                        <button onclick="exportTradeHistory()" 
+                                class="text-xs flex items-center gap-x-2 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 rounded-2xl">
+                            <i class="fa-solid fa-download text-xs"></i>
+                            <span>Export CSV</span>
+                        </button>
+                        <button onclick="resetSimulation()" 
+                                class="text-xs flex items-center gap-x-2 px-3 py-1.5 bg-zinc-900 hover:bg-red-900/30 border border-zinc-700 hover:border-red-500/40 text-red-400 rounded-2xl">
+                            <i class="fa-solid fa-redo"></i>
+                            <span>Reset All</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Metrics -->
+                <div class="grid grid-cols-3 md:grid-cols-6 gap-3 mb-5">
+                    <div class="bg-zinc-900 rounded-2xl p-3 border border-zinc-800">
+                        <div class="text-xs text-zinc-400">WIN RATE</div>
+                        <div id="metric-winrate" class="text-3xl font-semibold font-mono tracking-tighter">68%</div>
+                        <div class="text-emerald-400 text-xs">34 / 50 trades</div>
+                    </div>
+                    <div class="bg-zinc-900 rounded-2xl p-3 border border-zinc-800">
+                        <div class="text-xs text-zinc-400">TOTAL P&amp;L</div>
+                        <div id="metric-total-pnl" class="text-3xl font-semibold font-mono tracking-tighter text-emerald-400">+$2,847</div>
+                    </div>
+                    <div class="bg-zinc-900 rounded-2xl p-3 border border-zinc-800">
+                        <div class="text-xs text-zinc-400">PROFIT FACTOR</div>
+                        <div id="metric-profit-factor" class="text-3xl font-semibold font-mono tracking-tighter">1.84</div>
+                    </div>
+                    <div class="bg-zinc-900 rounded-2xl p-3 border border-zinc-800">
+                        <div class="text-xs text-zinc-400"># TRADES</div>
+                        <div id="metric-trades" class="text-3xl font-semibold font-mono tracking-tighter">50</div>
+                    </div>
+                    <div class="bg-zinc-900 rounded-2xl p-3 border border-zinc-800">
+                        <div class="text-xs text-zinc-400">MAX DRAWDOWN</div>
+                        <div id="metric-maxdd" class="text-3xl font-semibold font-mono tracking-tighter text-red-400">−8.2%</div>
+                    </div>
+                    <div class="bg-zinc-900 rounded-2xl p-3 border border-zinc-800">
+                        <div class="text-xs text-zinc-400">AVG R:R</div>
+                        <div id="metric-rr" class="text-3xl font-semibold font-mono tracking-tighter">1:2.1</div>
+                    </div>
+                </div>
+                
+                <!-- Trade Log Table -->
+                <div class="overflow-x-auto max-h-[240px] custom-scroll">
+                    <table class="w-full trading-table">
+                        <thead class="sticky top-0 bg-zinc-900 text-xs text-zinc-400">
+                            <tr>
+                                <th class="text-left py-2 px-3 font-normal">TIME</th>
+                                <th class="text-left py-2 px-3 font-normal">DIR</th>
+                                <th class="text-right py-2 px-3 font-normal">ENTRY</th>
+                                <th class="text-right py-2 px-3 font-normal">EXIT</th>
+                                <th class="text-right py-2 px-3 font-normal">P&amp;L</th>
+                                <th class="text-center py-2 px-3 font-normal">R:R</th>
+                                <th class="text-left py-2 px-3 font-normal hidden md:table-cell">EXIT REASON</th>
+                                <th class="text-center py-2 px-3 font-normal">CONF</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trade-log-body" class="text-sm divide-y divide-zinc-800">
+                            <!-- Populated dynamically by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" onclick="if (event.target.id === 'settings-modal') hideSettingsModal()" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center">
+        <div onclick="event.stopImmediatePropagation()" class="trading-card w-full max-w-lg mx-4 rounded-3xl p-6 border border-zinc-700">
+            <div class="flex justify-between items-center mb-5">
+                <div class="font-semibold text-xl">Agent Settings</div>
+                <button onclick="hideSettingsModal()" class="text-zinc-400 hover:text-white"><i class="fa-solid fa-times text-xl"></i></button>
+            </div>
+            
+            <div class="space-y-5 text-sm">
+                <!-- Simulation Settings -->
+                <div>
+                    <div class="font-medium mb-2 text-amber-400">SIMULATION</div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs text-zinc-400 block mb-1">Starting Virtual Capital</label>
+                            <input id="setting-capital" type="number" value="10000" class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-4 py-2 font-mono">
+                        </div>
+                        <div>
+                            <label class="text-xs text-zinc-400 block mb-1">Risk per Trade (%)</label>
+                            <input id="setting-risk" type="number" value="1" step="0.1" class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-4 py-2 font-mono">
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <div class="font-medium mb-2 text-amber-400">TELEGRAM ALERTS</div>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-xs text-zinc-400 block mb-1">Bot Token</label>
+                            <input id="setting-telegram-token" type="text" placeholder="123456:ABC-DEF..." 
+                                   class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-4 py-2 text-xs font-mono">
+                        </div>
+                        <div>
+                            <label class="text-xs text-zinc-400 block mb-1">Chat ID (or @username)</label>
+                            <input id="setting-telegram-chat" type="text" placeholder="-1001234567890" 
+                                   class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-4 py-2 text-xs font-mono">
+                        </div>
+                        <button onclick="testTelegram()" 
+                                class="text-xs px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-2xl w-full flex items-center justify-center gap-x-2">
+                            <i class="fa-brands fa-telegram"></i>
+                            <span>Test Telegram Connection</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div>
+                    <div class="font-medium mb-2 text-amber-400">LIVE DATA (OPTIONAL)</div>
+                    <div class="text-xs text-zinc-400 mb-2">For production, use a free Gold API key (GoldAPI.io recommended • 100 req/mo free). Simulation is highly realistic for strategy testing.</div>
+                    <input id="setting-apikey" type="text" placeholder="GoldAPI.io access token (optional)" 
+                           class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl px-4 py-2 text-xs font-mono">
+                    <div class="text-[10px] text-zinc-500 mt-1">Leave empty to stay in high-fidelity simulation mode.</div>
+                </div>
+            </div>
+            
+            <div class="flex gap-x-3 mt-6">
+                <button onclick="saveSettings()" 
+                        class="flex-1 py-3 bg-amber-400 hover:bg-amber-300 transition text-zinc-950 font-bold rounded-3xl">SAVE &amp; APPLY</button>
+                <button onclick="hideSettingsModal()" 
+                        class="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-3xl">CANCEL</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== STATE ====================
+        let state = {
+            currentPrice: 2658.45,
+            previousPrice: 2658.45,
+            historicalData: [], // {time, open, high, low, close}
+            balance: 10000,
+            todayPnL: 0,
+            openPosition: null,
+            tradeHistory: [],
+            settings: {
+                autoTrade: true,
+                riskPerTrade: 1.0,
+                startingCapital: 10000,
+                telegramToken: '',
+                telegramChatId: '',
+                apiKey: '',
+                useLiveData: false
+            },
+            lastAnalysisTime: Date.now(),
+            currentTimeframe: '5m',
+            chart: null,
+            simulationInterval: null,
+            lastTelegramSent: 0
+        };
+
+        // Load from localStorage
+        function loadState() {
+            const saved = localStorage.getItem('goldforge_state_v2');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                state.balance = parsed.balance || 10000;
+                state.tradeHistory = parsed.tradeHistory || [];
+                state.settings = { ...state.settings, ...parsed.settings };
+                if (parsed.openPosition) state.openPosition = parsed.openPosition;
+                
+                // Restore today's PnL from recent trades if needed
+                const today = new Date().toDateString();
+                state.todayPnL = state.tradeHistory
+                    .filter(t => new Date(t.exitTime).toDateString() === today)
+                    .reduce((sum, t) => sum + (t.pnl || 0), 0);
+            }
+            
+            // Seed initial historical data if empty (realistic 5m candles)
+            if (state.historicalData.length === 0) {
+                seedHistoricalData();
+            }
+            
+            // Apply settings to UI
+            document.getElementById('auto-trade-toggle').checked = state.settings.autoTrade;
+        }
+
+        function saveState() {
+            localStorage.setItem('goldforge_state_v2', JSON.stringify({
+                balance: state.balance,
+                tradeHistory: state.tradeHistory.slice(-80), // keep last 80
+                settings: state.settings,
+                openPosition: state.openPosition
+            }));
+        }
+
+        function seedHistoricalData() {
+            const now = Date.now();
+            let price = 2635;
+            state.historicalData = [];
+            
+            // Generate ~180 candles of 5m data (~15 hours)
+            for (let i = 180; i >= 0; i--) {
+                const time = now - (i * 5 * 60 * 1000);
+                const volatility = 1.8 + Math.random() * 1.2;
+                const change = (Math.random() - 0.48) * volatility; // slight bullish bias
+                
+                price = Math.max(2580, Math.min(2720, price + change));
+                
+                const open = price;
+                const close = Math.max(2580, Math.min(2720, price + (Math.random() - 0.5) * 3.5));
+                const high = Math.max(open, close) + Math.random() * 2.8;
+                const low = Math.min(open, close) - Math.random() * 2.8;
+                
+                state.historicalData.push({
+                    time: time,
+                    open: parseFloat(open.toFixed(2)),
+                    high: parseFloat(high.toFixed(2)),
+                    low: parseFloat(low.toFixed(2)),
+                    close: parseFloat(close.toFixed(2))
+                });
+                price = close;
+            }
+            
+            state.currentPrice = state.historicalData[state.historicalData.length - 1].close;
+        }
+
+        // ==================== INDICATORS ====================
+        function calculateEMA(data, period) {
+            if (data.length < period) return [];
+            const ema = [];
+            const k = 2 / (period + 1);
+            
+            let emaPrev = data.slice(0, period).reduce((a, b) => a + b.close, 0) / period;
+            ema.push(emaPrev);
+            
+            for (let i = period; i < data.length; i++) {
+                const emaVal = (data[i].close * k) + (emaPrev * (1 - k));
+                ema.push(emaVal);
+                emaPrev = emaVal;
+            }
+            return ema;
+        }
+
+        function calculateRSI(closes, period = 14) {
+            if (closes.length < period + 1) return 50;
+            
+            let gains = 0, losses = 0;
+            for (let i = 1; i <= period; i++) {
+                const change = closes[closes.length - i] - closes[closes.length - i - 1];
+                if (change > 0) gains += change;
+                else losses -= change;
+            }
+            
+            let avgGain = gains / period;
+            let avgLoss = losses / period;
+            
+            for (let i = period + 1; i < closes.length; i++) {
+                const change = closes[i] - closes[i - 1];
+                const gain = change > 0 ? change : 0;
+                const loss = change < 0 ? -change : 0;
+                
+                avgGain = ((avgGain * (period - 1)) + gain) / period;
+                avgLoss = ((avgLoss * (period - 1)) + loss) / period;
+            }
+            
+            if (avgLoss === 0) return 100;
+            const rs = avgGain / avgLoss;
+            return 100 - (100 / (1 + rs));
+        }
+
+        function calculateMACD(closes) {
+            if (closes.length < 26) return { macd: 0, signal: 0, hist: 0 };
+            
+            const ema12 = calculateEMA(closes.map((c, i) => ({close: c})), 12);
+            const ema26 = calculateEMA(closes.map((c, i) => ({close: c})), 26);
+            
+            const macdLine = ema12[ema12.length - 1] - ema26[ema26.length - 1];
+            
+            // Simple signal line approximation
+            const signal = macdLine * 0.85; // rough
+            const hist = macdLine - signal;
+            
+            return { macd: parseFloat(macdLine.toFixed(2)), signal: parseFloat(signal.toFixed(2)), hist: parseFloat(hist.toFixed(2)) };
+        }
+
+        function calculateATR(data, period = 14) {
+            if (data.length < period + 1) return 12;
+            
+            let trs = [];
+            for (let i = 1; i < data.length; i++) {
+                const highLow = data[i].high - data[i].low;
+                const highPrevClose = Math.abs(data[i].high - data[i-1].close);
+                const lowPrevClose = Math.abs(data[i].low - data[i-1].close);
+                trs.push(Math.max(highLow, highPrevClose, lowPrevClose));
+            }
+            
+            // Simple average for ATR
+            const recentTR = trs.slice(-period);
+            return recentTR.reduce((a, b) => a + b, 0) / period;
+        }
+
+        function findRecentSwingHighLow(data, lookback = 12) {
+            const recent = data.slice(-lookback);
+            let swingHigh = Math.max(...recent.map(c => c.high));
+            let swingLow = Math.min(...recent.map(c => c.low));
+            return { swingHigh, swingLow };
+        }
+
+        // ==================== AI BRAINS ====================
+        function analyzeBrain1(data) {
+            if (data.length < 30) return { signal: 'NEUTRAL', confidence: 50, reasons: ['Insufficient data'], rocketScore: 50 };
+            
+            const closes = data.map(d => d.close);
+            const ema9 = calculateEMA(data, 9);
+            const ema21 = calculateEMA(data, 21);
+            const ema50 = calculateEMA(data, 50);
+            
+            const currentEMA9 = ema9[ema9.length - 1];
+            const currentEMA21 = ema21[ema21.length - 1];
+            const currentEMA50 = ema50[ema50.length - 1] || currentEMA21;
+            
+            const rsi = calculateRSI(closes);
+            const macd = calculateMACD(closes);
+            const atr = calculateATR(data);
+            
+            const lastCandle = data[data.length - 1];
+            const prevCandle = data[data.length - 2];
+            
+            let score = 50;
+            let reasons = [];
+            let signal = 'NEUTRAL';
+            
+            // EMA alignment
+            if (currentEMA9 > currentEMA21 && lastCandle.close > currentEMA21) {
+                score += 18;
+                reasons.push('EMA9 crossed above EMA21 • Price above 21 EMA');
+            } else if (currentEMA9 < currentEMA21 && lastCandle.close < currentEMA21) {
+                score -= 16;
+                reasons.push('EMA bearish alignment');
+            }
+            
+            // RSI momentum
+            if (rsi > 55 && rsi < 78) {
+                score += 12;
+                reasons.push(`RSI ${rsi.toFixed(1)} showing bullish momentum`);
+            } else if (rsi < 45) {
+                score -= 8;
+            }
+            
+            // MACD
+            if (macd.hist > 0) {
+                score += 10;
+                reasons.push('MACD histogram positive');
+            }
+            
+            // Higher timeframe bias (simulated from recent data)
+            const recentHigh = Math.max(...data.slice(-30).map(d => d.high));
+            if (lastCandle.close > recentHigh * 0.995) {
+                score += 8;
+                reasons.push('Making higher highs • H1 bullish bias');
+            }
+            
+            // Price structure
+            if (lastCandle.close > prevCandle.high) {
+                score += 7;
+                reasons.push('Bullish structure break');
+            }
+            
+            // Rocket score component
+            let rocketScore = Math.min(100, Math.max(0, score + (rsi - 50) * 0.6 + (macd.hist * 3)));
+            
+            if (score > 72) signal = 'BUY';
+            else if (score < 38) signal = 'SELL';
+            
+            return {
+                signal,
+                confidence: Math.min(95, Math.max(35, Math.round(score))),
+                reasons: reasons.slice(0, 4),
+                rocketScore: Math.round(rocketScore),
+                ema9: currentEMA9,
+                ema21: currentEMA21,
+                rsi: rsi,
+                macdHist: macd.hist,
+                atr: atr
+            };
+        }
+
+        function analyzeBrain2(data) {
+            if (data.length < 20) return { signal: 'NEUTRAL', confidence: 50, reasons: ['Insufficient data'], waterfallScore: 50 };
+            
+            const last = data[data.length - 1];
+            const prev = data[data.length - 2];
+            const closes = data.map(d => d.close);
+            
+            let score = 48;
+            let reasons = [];
+            let signal = 'NEUTRAL';
+            
+            // Candlestick patterns
+            const body = Math.abs(last.close - last.open);
+            const prevBody = Math.abs(prev.close - prev.open);
+            const isBullishCandle = last.close > last.open;
+            
+            if (isBullishCandle && prev.close < prev.open && body > prevBody * 1.1 && last.close > prev.open) {
+                score += 22;
+                reasons.push('Bullish Engulfing pattern confirmed');
+            }
+            
+            if (last.close > last.open && (last.low < prev.low) && body > (last.high - last.low) * 0.6) {
+                score += 11;
+                reasons.push('Hammer / strong rejection at lows');
+            }
+            
+            // Breakout detection
+            const { swingHigh, swingLow } = findRecentSwingHighLow(data, 10);
+            if (last.close > swingHigh * 0.998 && last.close > prev.high) {
+                score += 18;
+                reasons.push('Breakout above recent swing high');
+            }
+            
+            // Momentum (rate of change last 5 candles)
+            const roc = ((last.close - data[data.length - 6].close) / data[data.length - 6].close) * 100;
+            if (roc > 0.6) {
+                score += 14;
+                reasons.push(`Strong momentum (+${roc.toFixed(2)}% in last 25m)`);
+            }
+            
+            // Support/Resistance proximity
+            const atr = calculateATR(data);
+            const distToSwingLow = (last.close - swingLow) / atr;
+            if (distToSwingLow > 2.5 && isBullishCandle) {
+                score += 6;
+            }
+            
+            let waterfallScore = Math.max(0, 100 - score - 5);
+            
+            if (score > 70) signal = 'BUY';
+            else if (score < 35) signal = 'SELL';
+            
+            return {
+                signal,
+                confidence: Math.min(92, Math.max(40, Math.round(score + 5))),
+                reasons: reasons.slice(0, 3),
+                waterfallScore: Math.round(waterfallScore)
+            };
+        }
+
+        function getConsensus(brain1, brain2) {
+            let signal = 'NEUTRAL';
+            let confidence = Math.round((brain1.confidence + brain2.confidence) / 2);
+            let isRocket = false;
+            let isWaterfall = false;
+            
+            if (brain1.signal === brain2.signal && brain1.signal !== 'NEUTRAL') {
+                signal = brain1.signal;
+                
+                if (signal === 'BUY' && brain1.rocketScore > 72 && brain2.confidence > 68) {
+                    isRocket = true;
+                    confidence = Math.min(96, confidence + 8);
+                }
+                
+                if (signal === 'SELL' && brain2.waterfallScore > 68) {
+                    isWaterfall = true;
+                    confidence = Math.min(94, confidence + 6);
+                }
+            } else if (brain1.signal === 'BUY' && brain2.signal === 'BUY') {
+                signal = 'BUY';
+            } else if (brain1.signal === 'SELL' && brain2.signal === 'SELL') {
+                signal = 'SELL';
+            }
+            
+            return { signal, confidence, isRocket, isWaterfall };
+        }
+
+        // ==================== SIMULATION & LIVE UPDATE ====================
+        function updateSimulation() {
+            const data = state.historicalData;
+            const lastCandle = data[data.length - 1];
+            
+            // Simulate realistic price movement
+            const volatility = 0.9;
+            let drift = 0.012; // slight bullish drift in this regime
+            
+            // Occasionally create stronger moves or reversals
+            const rand = Math.random();
+            if (rand < 0.04) drift = 0.8;        // mini rocket
+            else if (rand > 0.96) drift = -0.65; // waterfall attempt
+            
+            const change = (Math.random() - 0.485) * volatility + drift;
+            let newPrice = state.currentPrice + change;
+            
+            // Mean reversion tendency
+            const meanPrice = 2655;
+            if (Math.abs(newPrice - meanPrice) > 85) {
+                newPrice = state.currentPrice * 0.6 + meanPrice * 0.4;
+            }
+            
+            newPrice = parseFloat(Math.max(2570, Math.min(2750, newPrice)).toFixed(2));
+            
+            // Update current candle
+            lastCandle.high = Math.max(lastCandle.high, newPrice);
+            lastCandle.low = Math.min(lastCandle.low, newPrice);
+            lastCandle.close = newPrice;
+            
+            state.previousPrice = state.currentPrice;
+            state.currentPrice = newPrice;
+            
+            // New candle every ~60-90 seconds of real time (simulated 5m)
+            const now = Date.now();
+            if (now - lastCandle.time > 62000) {
+                // Close current candle and start new one
+                const newCandle = {
+                    time: now,
+                    open: newPrice,
+                    high: newPrice,
+                    low: newPrice,
+                    close: newPrice
+                };
+                data.push(newCandle);
+                
+                // Keep only last 220 candles
+                if (data.length > 220) data.shift();
+                
+                // Occasionally inject interesting pattern
+                if (Math.random() < 0.08) {
+                    injectInterestingPattern(data);
+                }
+            }
+            
+            // Update everything
+            updateUI();
+            checkAutoTradeLogic();
+            
+            // Save state periodically
+            if (Math.random() < 0.15) saveState();
+        }
+
+        function injectInterestingPattern(data) {
+            // Create a small bullish flag or strong move for demo purposes
+            const lastIdx = data.length - 1;
+            for (let i = 4; i >= 0; i--) {
+                if (lastIdx - i >= 0) {
+                    const c = data[lastIdx - i];
+                    if (i === 4) c.close = c.close * 0.997;
+                    else if (i === 0) c.close = c.close * 1.004;
+                }
+            }
+        }
+
+        function updateUI() {
+            const data = state.historicalData;
+            const last = data[data.length - 1];
+            
+            // Price display
+            document.getElementById('current-price').textContent = state.currentPrice.toFixed(2);
+            
+            const change = state.currentPrice - state.previousPrice;
+            const changePct = ((change / state.previousPrice) * 100).toFixed(2);
+            
+            const changeEl = document.getElementById('price-change');
+            const changeValEl = document.getElementById('price-change-value');
+            const changePctEl = document.getElementById('price-change-pct');
+            
+            if (change >= 0) {
+                changeEl.className = 'inline-flex items-center gap-x-1 px-3 py-0.5 rounded-2xl text-sm font-semibold bg-emerald-500/10 text-emerald-400';
+                changeValEl.innerHTML = `+${change.toFixed(2)}`;
+            } else {
+                changeEl.className = 'inline-flex items-center gap-x-1 px-3 py-0.5 rounded-2xl text-sm font-semibold bg-red-500/10 text-red-400';
+                changeValEl.innerHTML = change.toFixed(2);
+            }
+            changePctEl.textContent = `(${change >= 0 ? '+' : ''}${changePct}%)`;
+            
+            // Day high/low (approx from recent data)
+            const recentHigh = Math.max(...data.slice(-48).map(d => d.high));
+            const recentLow = Math.min(...data.slice(-48).map(d => d.low));
+            document.getElementById('day-high').textContent = recentHigh.toFixed(2);
+            document.getElementById('day-low').textContent = recentLow.toFixed(2);
+            
+            // Update indicators
+            updateIndicators(data);
+            
+            // Update Brains
+            const brain1 = analyzeBrain1(data);
+            const brain2 = analyzeBrain2(data);
+            updateBrainsUI(brain1, brain2);
+            
+            // Master signal
+            const consensus = getConsensus(brain1, brain2);
+            updateMasterSignal(consensus, brain1, brain2);
+            
+            // Position P&L
+            updatePositionUI();
+            
+            // Update chart
+            updatePriceChart(data);
+            
+            // Update metrics & log
+            updatePerformanceMetrics();
+            renderTradeLog();
+            
+            // Update balance
+            document.getElementById('balance-display').textContent = '$' + state.balance.toLocaleString('en-US', {minimumFractionDigits: 2});
+            const todayEl = document.getElementById('today-pnl');
+            todayEl.textContent = (state.todayPnL >= 0 ? '+' : '') + '$' + state.todayPnL.toFixed(2);
+            todayEl.className = state.todayPnL >= 0 ? 'font-mono text-xl font-semibold tracking-tighter text-emerald-400' : 'font-mono text-xl font-semibold tracking-tighter text-red-400';
+        }
+
+        function updateIndicators(data) {
+            const brain1 = analyzeBrain1(data); // reuse calculations
+            
+            document.getElementById('ema-values').innerHTML = 
+                `${brain1.ema9.toFixed(1)} <span class="text-zinc-500">/</span> ${brain1.ema21.toFixed(1)}`;
+            
+            document.getElementById('rsi-value').textContent = brain1.rsi.toFixed(1);
+            document.getElementById('rsi-value').className = brain1.rsi > 60 ? 'font-mono text-emerald-400' : brain1.rsi < 40 ? 'font-mono text-red-400' : 'font-mono text-amber-400';
+            
+            document.getElementById('macd-value').textContent = (brain1.macdHist >= 0 ? '+' : '') + brain1.macdHist.toFixed(2);
+            document.getElementById('macd-value').className = brain1.macdHist >= 0 ? 'font-mono text-emerald-400' : 'font-mono text-red-400';
+            
+            document.getElementById('atr-value').textContent = brain1.atr.toFixed(1);
+            
+            // Momentum score (composite)
+            const momentum = Math.min(100, Math.max(20, Math.round(brain1.rocketScore * 0.7 + (brain1.rsi - 40))));
+            document.getElementById('momentum-score').textContent = momentum;
+            document.getElementById('momentum-score').className = momentum > 70 ? 'font-mono font-bold text-lg leading-none text-emerald-400' : 'font-mono font-bold text-lg leading-none text-amber-400';
+        }
+
+        function updateBrainsUI(brain1, brain2) {
+            // Brain 1
+            const b1SignalEl = document.getElementById('brain1-signal');
+            b1SignalEl.innerHTML = `<i class="fa-solid fa-arrow-trend-${brain1.signal === 'BUY' ? 'up' : brain1.signal === 'SELL' ? 'down' : 'right'}"></i> <span>${brain1.signal}</span>`;
+            b1SignalEl.className = `signal-badge flex items-center gap-x-1.5 px-4 py-1 text-sm ${brain1.signal === 'BUY' ? 'bg-emerald-500 text-white' : brain1.signal === 'SELL' ? 'bg-red-500 text-white' : 'bg-zinc-600 text-white'}`;
+            
+            document.getElementById('brain1-conf').textContent = brain1.confidence + '%';
+            document.getElementById('brain1-conf-bar').style.width = brain1.confidence + '%';
+            document.getElementById('brain1-conf-bar').className = `h-2 rounded-full transition-all ${brain1.confidence > 70 ? 'bg-emerald-400' : brain1.confidence > 50 ? 'bg-amber-400' : 'bg-red-400'}`;
+            
+            const b1ReasonsEl = document.getElementById('brain1-reasons');
+            b1ReasonsEl.innerHTML = brain1.reasons.map(r => `<li class="flex gap-x-1.5"><span class="text-emerald-400 mt-0.5">•</span> <span>${r}</span></li>`).join('');
+            
+            document.getElementById('brain1-rocket').textContent = brain1.rocketScore || 50;
+            
+            // Brain 2
+            const b2SignalEl = document.getElementById('brain2-signal');
+            b2SignalEl.innerHTML = `<i class="fa-solid fa-arrow-trend-${brain2.signal === 'BUY' ? 'up' : brain2.signal === 'SELL' ? 'down' : 'right'}"></i> <span>${brain2.signal}</span>`;
+            b2SignalEl.className = `signal-badge flex items-center gap-x-1.5 px-4 py-1 text-sm ${brain2.signal === 'BUY' ? 'bg-emerald-500 text-white' : brain2.signal === 'SELL' ? 'bg-red-500 text-white' : 'bg-zinc-600 text-white'}`;
+            
+            document.getElementById('brain2-conf').textContent = brain2.confidence + '%';
+            document.getElementById('brain2-conf-bar').style.width = brain2.confidence + '%';
+            document.getElementById('brain2-conf-bar').className = `h-2 rounded-full transition-all ${brain2.confidence > 70 ? 'bg-purple-400' : brain2.confidence > 50 ? 'bg-amber-400' : 'bg-red-400'}`;
+            
+            const b2ReasonsEl = document.getElementById('brain2-reasons');
+            b2ReasonsEl.innerHTML = brain2.reasons.map(r => `<li class="flex gap-x-1.5"><span class="text-purple-400 mt-0.5">•</span> <span>${r}</span></li>`).join('');
+            
+            document.getElementById('brain2-waterfall').textContent = brain2.waterfallScore || 30;
+        }
+
+        function updateMasterSignal(consensus, brain1, brain2) {
+            const badge = document.getElementById('master-signal-badge');
+            const textEl = document.getElementById('master-signal-text');
+            const confEl = document.getElementById('master-conf');
+            const bestBadge = document.getElementById('best-moment-badge');
+            const actionEl = document.getElementById('suggested-action');
+            const entryEl = document.getElementById('suggested-entry');
+            
+            confEl.textContent = consensus.confidence;
+            
+            let badgeClass = 'inline-flex items-center gap-x-3 px-6 py-2.5 rounded-3xl text-white text-xl font-bold tracking-tighter shadow-inner ';
+            
+            if (consensus.signal === 'BUY') {
+                if (consensus.isRocket) {
+                    badgeClass += 'bg-emerald-500';
+                    textEl.textContent = 'STRONG BUY — ROCKET MODE';
+                    bestBadge.classList.remove('hidden');
+                    bestBadge.classList.add('flex');
+                } else {
+                    badgeClass += 'bg-emerald-600';
+                    textEl.textContent = 'BUY SIGNAL';
+                    bestBadge.classList.add('hidden');
+                    bestBadge.classList.remove('flex');
+                }
+                actionEl.textContent = 'LONG';
+                actionEl.className = 'font-mono text-2xl font-semibold text-emerald-400';
+            } else if (consensus.signal === 'SELL') {
+                if (consensus.isWaterfall) {
+                    badgeClass += 'bg-red-500';
+                    textEl.textContent = 'SELL — WATERFALL MODE';
+                } else {
+                    badgeClass += 'bg-red-600';
+                    textEl.textContent = 'SELL SIGNAL';
+                }
+                bestBadge.classList.add('hidden');
+                bestBadge.classList.remove('flex');
+                actionEl.textContent = 'SHORT';
+                actionEl.className = 'font-mono text-2xl font-semibold text-red-400';
+            } else {
+                badgeClass += 'bg-zinc-600';
+                textEl.textContent = 'HOLD / NEUTRAL';
+                bestBadge.classList.add('hidden');
+                bestBadge.classList.remove('flex');
+                actionEl.textContent = 'WAIT';
+                actionEl.className = 'font-mono text-2xl font-semibold text-zinc-400';
+            }
+            
+            badge.className = badgeClass;
+            entryEl.textContent = state.currentPrice.toFixed(2);
+            
+            // Auto enter if conditions met and auto enabled
+            if (state.settings.autoTrade && state.openPosition === null) {
+                if (consensus.signal === 'BUY' && consensus.confidence > 74 && consensus.isRocket) {
+                    // Auto enter long
+                    setTimeout(() => {
+                        if (!state.openPosition) autoEnterPosition('LONG', consensus.confidence, brain1.rocketScore);
+                    }, 800);
+                } else if (consensus.signal === 'SELL' && consensus.confidence > 72 && consensus.isWaterfall) {
+                    setTimeout(() => {
+                        if (!state.openPosition) autoEnterPosition('SHORT', consensus.confidence, brain2.waterfallScore);
+                    }, 800);
+                }
+            }
+        }
+
+        function updatePositionUI() {
+            const detailsEl = document.getElementById('position-details');
+            const noPosEl = document.getElementById('no-position-state');
+            const statusPill = document.getElementById('position-status-pill');
+            
+            if (!state.openPosition) {
+                detailsEl.classList.add('hidden');
+                noPosEl.classList.remove('hidden');
+                statusPill.textContent = 'NO OPEN POSITION';
+                statusPill.className = 'px-3 py-1 text-xs font-medium rounded-3xl bg-zinc-800 text-zinc-400';
+                return;
+            }
+            
+            detailsEl.classList.remove('hidden');
+            noPosEl.classList.add('hidden');
+            
+            const pos = state.openPosition;
+            const isLong = pos.type === 'LONG';
+            const unrealized = isLong 
+                ? (state.currentPrice - pos.entry) * pos.size 
+                : (pos.entry - state.currentPrice) * pos.size;
+            
+            document.getElementById('pos-direction').textContent = pos.type;
+            document.getElementById('pos-direction').className = `font-bold text-2xl ${isLong ? 'text-emerald-400' : 'text-red-400'}`;
+            
+            document.getElementById('pos-entry').textContent = pos.entry.toFixed(2);
+            document.getElementById('pos-time').textContent = getTimeAgo(pos.entryTime);
+            
+            const pnlEl = document.getElementById('pos-pnl');
+            pnlEl.textContent = (unrealized >= 0 ? '+' : '') + '$' + unrealized.toFixed(2);
+            pnlEl.className = `font-mono text-3xl font-bold ${unrealized >= 0 ? 'text-emerald-400' : 'text-red-400'}`;
+            
+            const rMultiple = (unrealized / (Math.abs(pos.entry - pos.sl) * pos.size)).toFixed(2);
+            document.getElementById('pos-pnl-pct').textContent = `(${rMultiple}R)`;
+            document.getElementById('pos-pnl-pct').className = unrealized >= 0 ? 'text-emerald-400 text-sm' : 'text-red-400 text-sm';
+            
+            document.getElementById('pos-sl').innerHTML = `${pos.sl.toFixed(2)} <span class="text-xs text-zinc-500">(−${(pos.entry - pos.sl).toFixed(1)})</span>`;
+            document.getElementById('pos-tp').innerHTML = `${pos.tp.toFixed(2)} <span class="text-xs text-emerald-400">(+${(pos.tp - pos.entry).toFixed(1)})</span>`;
+            
+            statusPill.textContent = 'POSITION OPEN • AUTO MANAGED';
+            statusPill.className = 'px-3 py-1 text-xs font-medium rounded-3xl bg-emerald-500/10 text-emerald-400';
+            
+            // Check for SL/TP hit or exit signal
+            checkPositionManagement(unrealized, pos);
+        }
+
+        function getTimeAgo(timestamp) {
+            const mins = Math.floor((Date.now() - timestamp) / 60000);
+            if (mins < 1) return 'just now';
+            if (mins === 1) return '1m ago';
+            return mins + 'm ago';
+        }
+
+        function checkPositionManagement(unrealized, pos) {
+            const isLong = pos.type === 'LONG';
+            let shouldExit = false;
+            let exitReason = '';
+            let exitPrice = state.currentPrice;
+            
+            // SL hit
+            if ((isLong && state.currentPrice <= pos.sl) || (!isLong && state.currentPrice >= pos.sl)) {
+                shouldExit = true;
+                exitReason = 'Stop Loss Hit';
+                exitPrice = pos.sl;
+            }
+            
+            // TP hit
+            else if ((isLong && state.currentPrice >= pos.tp) || (!isLong && state.currentPrice <= pos.tp)) {
+                shouldExit = true;
+                exitReason = 'Take Profit Hit';
+                exitPrice = pos.tp;
+            }
+            
+            // Trailing logic (move SL to breakeven after 1R)
+            const currentR = unrealized / (Math.abs(pos.entry - pos.sl) * pos.size);
+            if (currentR >= 1 && !pos.trailingActivated) {
+                pos.sl = pos.entry; // move to breakeven
+                pos.trailingActivated = true;
+                // Optional: send telegram on BE
+            }
+            
+            // Opposite signal exit (conservative)
+            if (!shouldExit && state.settings.autoTrade) {
+                const data = state.historicalData;
+                const b1 = analyzeBrain1(data);
+                const b2 = analyzeBrain2(data);
+                const cons = getConsensus(b1, b2);
+                
+                if ((pos.type === 'LONG' && cons.signal === 'SELL' && cons.confidence > 68) ||
+                    (pos.type === 'SHORT' && cons.signal === 'BUY' && cons.confidence > 68)) {
+                    shouldExit = true;
+                    exitReason = 'Opposite AI Consensus';
+                }
+            }
+            
+            if (shouldExit) {
+                closePosition(exitReason, exitPrice);
+            }
+        }
+
+        function calculatePositionSize(entry, sl) {
+            const riskAmount = state.balance * (state.settings.riskPerTrade / 100);
+            const riskPerUnit = Math.abs(entry - sl);
+            if (riskPerUnit < 0.5) return 1; // safety
+            return parseFloat((riskAmount / riskPerUnit).toFixed(2));
+        }
+
+        function autoEnterPosition(type, confidence, score) {
+            if (state.openPosition) return;
+            
+            const entry = state.currentPrice;
+            const atr = calculateATR(state.historicalData);
+            const slDistance = atr * 1.35;
+            
+            let sl, tp;
+            
+            if (type === 'LONG') {
+                sl = parseFloat((entry - slDistance).toFixed(2));
+                tp = parseFloat((entry + slDistance * 2.3).toFixed(2));
+            } else {
+                sl = parseFloat((entry + slDistance).toFixed(2));
+                tp = parseFloat((entry - slDistance * 2.3).toFixed(2));
+            }
+            
+            const size = calculatePositionSize(entry, sl);
+            
+            state.openPosition = {
+                type,
+                entry,
+                entryTime: Date.now(),
+                sl,
+                tp,
+                size,
+                confidenceAtEntry: confidence,
+                scoreAtEntry: score,
+                trailingActivated: false
+            };
+            
+            // Telegram alert
+            sendTradeAlert('ENTRY', type, entry, sl, tp, confidence);
+            
+            updateUI();
+            saveState();
+        }
+
+        function manualEnter(type) {
+            if (state.openPosition) {
+                alert('Close current position first.');
+                return;
+            }
+            const data = state.historicalData;
+            const b1 = analyzeBrain1(data);
+            const conf = type === 'LONG' ? b1.confidence : 70;
+            autoEnterPosition(type, conf, b1.rocketScore || 65);
+        }
+
+        function closePosition(reason = 'Manual Close', exitPrice = null) {
+            if (!state.openPosition) return;
+            
+            const pos = state.openPosition;
+            const exit = exitPrice || state.currentPrice;
+            const isLong = pos.type === 'LONG';
+            
+            const pnl = isLong 
+                ? (exit - pos.entry) * pos.size 
+                : (pos.entry - exit) * pos.size;
+            
+            const rMultiple = pnl / (Math.abs(pos.entry - pos.sl) * pos.size);
+            
+            const trade = {
+                id: Date.now(),
+                entryTime: pos.entryTime,
+                exitTime: Date.now(),
+                type: pos.type,
+                entry: pos.entry,
+                exit: parseFloat(exit.toFixed(2)),
+                pnl: parseFloat(pnl.toFixed(2)),
+                rMultiple: parseFloat(rMultiple.toFixed(2)),
+                reason: reason,
+                confidence: pos.confidenceAtEntry || 70
+            };
+            
+            state.tradeHistory.push(trade);
+            state.balance += pnl;
+            state.todayPnL += pnl;
+            
+            // Telegram exit alert
+            sendTradeAlert('EXIT', pos.type, pos.entry, exit, pnl, pos.confidenceAtEntry, reason);
+            
+            state.openPosition = null;
+            
+            updateUI();
+            saveState();
+            
+            // Show toast
+            showToast(`${reason} • P&L: $${pnl.toFixed(2)} (${rMultiple}R)`, pnl > 0 ? 'success' : 'error');
+        }
+
+        function checkAutoTradeLogic() {
+            // This is called in update loop. Main logic is inside updateMasterSignal for entries.
+            // Additional safety: if position open too long without movement, etc. (can expand)
+        }
+
+        // ==================== CHART ====================
+        let priceChart = null;
+
+        function initPriceChart() {
+            const ctx = document.getElementById('price-chart');
+            
+            priceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Price',
+                            data: [],
+                            borderColor: '#f4d35e',
+                            borderWidth: 2.5,
+                            tension: 0.25,
+                            pointRadius: 0,
+                            pointHoverRadius: 3,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'EMA 9',
+                            data: [],
+                            borderColor: '#60a5fa',
+                            borderWidth: 1.5,
+                            borderDash: [2, 2],
+                            tension: 0.3,
+                            pointRadius: 0,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'EMA 21',
+                            data: [],
+                            borderColor: '#c026ff',
+                            borderWidth: 1.5,
+                            borderDash: [3, 3],
+                            tension: 0.3,
+                            pointRadius: 0,
+                            yAxisID: 'y'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 420, easing: 'easeOutQuart' },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { mode: 'index', intersect: false, displayColors: false }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: '#27272a', lineWidth: 0.5 },
+                            ticks: { color: '#52525b', font: { size: 9 }, maxTicksLimit: 8 }
+                        },
+                        y: {
+                            grid: { color: '#27272a', lineWidth: 0.5 },
+                            ticks: { color: '#52525b', font: { size: 10 }, callback: v => v.toFixed(0) }
+                        }
+                    },
+                    interaction: { intersect: false, mode: 'nearest' }
+                }
+            });
+            
+            state.chart = priceChart;
+        }
+
+        function updatePriceChart(data) {
+            if (!priceChart || data.length === 0) return;
+            
+            const displayData = data.slice(-90); // last ~7.5 hours
+            
+            const labels = displayData.map(d => {
+                const date = new Date(d.time);
+                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            });
+            
+            const closes = displayData.map(d => d.close);
+            const ema9Arr = calculateEMA(displayData, 9);
+            const ema21Arr = calculateEMA(displayData, 21);
+            
+            // Pad EMAs to align
+            const ema9Padded = new Array(displayData.length - ema9Arr.length).fill(null).concat(ema9Arr);
+            const ema21Padded = new Array(displayData.length - ema21Arr.length).fill(null).concat(ema21Arr);
+            
+            priceChart.data.labels = labels;
+            priceChart.data.datasets[0].data = closes;
+            priceChart.data.datasets[1].data = ema9Padded;
+            priceChart.data.datasets[2].data = ema21Padded;
+            
+            priceChart.update();
+        }
+
+        function switchTimeframe(tf) {
+            // In this version we keep 5m data but can simulate different views
+            state.currentTimeframe = tf;
+            
+            // Highlight active
+            document.querySelectorAll('[id^="tf-"]').forEach(el => el.classList.remove('bg-zinc-800', 'text-white'));
+            document.getElementById('tf-' + tf).classList.add('bg-zinc-800', 'text-white');
+            
+            // For demo, just re-render chart with note (full multi-tf would require more data aggregation)
+            const data = state.historicalData;
+            updatePriceChart(data);
+            
+            // Show toast
+            if (tf !== '5m') {
+                showToast(`Switched to ${tf} view (demo uses aggregated 5m data)`, 'info');
+            }
+        }
+
+        // ==================== TELEGRAM ====================
+        async function sendTradeAlert(action, type, entry, slOrExit, tpOrPnl, confidence, extraReason = '') {
+            if (!state.settings.telegramToken || !state.settings.telegramChatId) return;
+            
+            const now = Date.now();
+            if (now - state.lastTelegramSent < 25000) return; // rate limit alerts
+            
+            let message = '';
+            const symbol = 'XAU/USD';
+            
+            if (action === 'ENTRY') {
+                message = `🚀 <b>GOLDFORGE ${type} ENTRY</b>\n` +
+                          `Symbol: <b>${symbol}</b>\n` +
+                          `Entry: <b>${entry}</b>\n` +
+                          `SL: <b>${slOrExit}</b> | TP: <b>${tpOrPnl}</b>\n` +
+                          `Confidence: <b>${confidence}%</b>\n` +
+                          `Time: ${new Date().toLocaleTimeString()}`;
+            } else if (action === 'EXIT') {
+                const pnlSign = tpOrPnl >= 0 ? '✅ PROFIT' : '❌ LOSS';
+                message = `${pnlSign} <b>GOLDFORGE ${type} EXIT</b>\n` +
+                          `Entry → Exit: <b>${entry} → ${slOrExit}</b>\n` +
+                          `P&amp;L: <b>$${tpOrPnl}</b> (${extraReason})\n` +
+                          `Reason: ${extraReason || 'AI Signal'}\n` +
+                          `Time: ${new Date().toLocaleTimeString()}`;
+            }
+            
+            try {
+                const url = `https://api.telegram.org/bot${state.settings.telegramToken}/sendMessage`;
+                await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: state.settings.telegramChatId,
+                        text: message,
+                        parse_mode: 'HTML'
+                    })
+                });
+                state.lastTelegramSent = now;
+            } catch (e) {
+                console.log('Telegram send failed (non-critical)');
+            }
+        }
+
+        async function testTelegram() {
+            const token = document.getElementById('setting-telegram-token').value.trim();
+            const chat = document.getElementById('setting-telegram-chat').value.trim();
+            
+            if (!token || !chat) {
+                alert('Please enter both Bot Token and Chat ID');
+                return;
+            }
+            
+            try {
+                const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: chat,
+                        text: '✅ GoldForge AI Agent connected successfully!\nYou will receive trade alerts here.'
+                    })
+                });
+                
+                if (res.ok) {
+                    alert('Telegram test successful! Alerts will be sent.');
+                } else {
+                    alert('Failed. Check token and chat ID.');
+                }
+            } catch (err) {
+                alert('Connection error. Check your internet or token.');
+            }
+        }
+
+        // ==================== PERFORMANCE & LOG ====================
+        function updatePerformanceMetrics() {
+            const trades = state.tradeHistory;
+            if (trades.length === 0) {
+                document.getElementById('metric-winrate').textContent = '—';
+                document.getElementById('metric-total-pnl').textContent = '$0';
+                return;
+            }
+            
+            const wins = trades.filter(t => t.pnl > 0).length;
+            const winrate = Math.round((wins / trades.length) * 100);
+            document.getElementById('metric-winrate').textContent = winrate + '%';
+            
+            const totalPnL = trades.reduce((sum, t) => sum + t.pnl, 0);
+            const totalEl = document.getElementById('metric-total-pnl');
+            totalEl.textContent = (totalPnL >= 0 ? '+' : '') + '$' + totalPnL.toFixed(0);
+            totalEl.className = totalPnL >= 0 ? 'text-3xl font-semibold font-mono tracking-tighter text-emerald-400' : 'text-3xl font-semibold font-mono tracking-tighter text-red-400';
+            
+            // Profit factor
+            const grossProfit = trades.filter(t => t.pnl > 0).reduce((s, t) => s + t.pnl, 0);
+            const grossLoss = Math.abs(trades.filter(t => t.pnl < 0).reduce((s, t) => s + t.pnl, 0));
+            const pf = grossLoss > 0 ? (grossProfit / grossLoss).toFixed(2) : '∞';
+            document.getElementById('metric-profit-factor').textContent = pf;
+            
+            document.getElementById('metric-trades').textContent = trades.length;
+            
+            // Max DD (simplified)
+            let peak = state.settings.startingCapital;
+            let maxDD = 0;
+            let running = state.settings.startingCapital;
+            trades.forEach(t => {
+                running += t.pnl;
+                if (running > peak) peak = running;
+                const dd = ((peak - running) / peak) * 100;
+                if (dd > maxDD) maxDD = dd;
+            });
+            document.getElementById('metric-maxdd').textContent = '−' + maxDD.toFixed(1) + '%';
+            
+            // Avg R:R
+            const avgRR = trades.length > 0 ? (trades.reduce((s, t) => s + (t.rMultiple || 1), 0) / trades.length).toFixed(1) : '1.0';
+            document.getElementById('metric-rr').textContent = '1:' + avgRR;
+        }
+
+        function renderTradeLog() {
+            const tbody = document.getElementById('trade-log-body');
+            tbody.innerHTML = '';
+            
+            const recent = [...state.tradeHistory].reverse().slice(0, 12);
+            
+            recent.forEach(trade => {
+                const row = document.createElement('tr');
+                row.className = 'trade-row border-b border-zinc-800';
+                
+                const pnlColor = trade.pnl >= 0 ? 'text-emerald-400' : 'text-red-400';
+                const dirColor = trade.type === 'LONG' ? 'text-emerald-400' : 'text-red-400';
+                
+                row.innerHTML = `
+                    <td class="py-2.5 px-3 text-xs text-zinc-400 font-mono">${new Date(trade.exitTime).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</td>
+                    <td class="py-2.5 px-3"><span class="font-bold ${dirColor}">${trade.type}</span></td>
+                    <td class="py-2.5 px-3 text-right font-mono text-xs">${trade.entry}</td>
+                    <td class="py-2.5 px-3 text-right font-mono text-xs">${trade.exit}</td>
+                    <td class="py-2.5 px-3 text-right font-mono font-semibold ${pnlColor}">$${trade.pnl}</td>
+                    <td class="py-2.5 px-3 text-center text-xs font-mono">${trade.rMultiple || '—'}R</td>
+                    <td class="py-2.5 px-3 text-xs text-zinc-400 hidden md:table-cell">${trade.reason}</td>
+                    <td class="py-2.5 px-3 text-center"><span class="px-2 py-0.5 text-[10px] rounded bg-zinc-800">${trade.confidence || 70}%</span></td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            if (recent.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-xs text-zinc-500">No trades executed yet. Enable Auto Trade or use manual buttons.</td></tr>`;
+            }
+        }
+
+        function exportTradeHistory() {
+            if (state.tradeHistory.length === 0) {
+                alert('No trades to export yet.');
+                return;
+            }
+            
+            let csv = 'Time,Direction,Entry,Exit,PnL,R_Multiple,Reason,Confidence\n';
+            
+            state.tradeHistory.forEach(t => {
+                csv += `${new Date(t.exitTime).toISOString()},${t.type},${t.entry},${t.exit},${t.pnl},${t.rMultiple || ''},"${t.reason}",${t.confidence || ''}\n`;
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `goldforge_trades_${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function resetSimulation() {
+            if (!confirm('Reset everything? This will clear balance, trades, and position.')) return;
+            
+            localStorage.removeItem('goldforge_state_v2');
+            
+            // Reset state
+            state.balance = 10000;
+            state.todayPnL = 0;
+            state.tradeHistory = [];
+            state.openPosition = null;
+            state.historicalData = [];
+            
+            seedHistoricalData();
+            state.currentPrice = state.historicalData[state.historicalData.length - 1].close;
+            
+            updateUI();
+            saveState();
+            showToast('Simulation reset to defaults', 'info');
+        }
+
+        // ==================== SETTINGS ====================
+        function showSettingsModal() {
+            const modal = document.getElementById('settings-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            
+            // Populate current values
+            document.getElementById('setting-capital').value = state.settings.startingCapital;
+            document.getElementById('setting-risk').value = state.settings.riskPerTrade;
+            document.getElementById('setting-telegram-token').value = state.settings.telegramToken || '';
+            document.getElementById('setting-telegram-chat').value = state.settings.telegramChatId || '';
+            document.getElementById('setting-apikey').value = state.settings.apiKey || '';
+        }
+
+        function hideSettingsModal() {
+            const modal = document.getElementById('settings-modal');
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+        }
+
+        function saveSettings() {
+            state.settings.startingCapital = parseFloat(document.getElementById('setting-capital').value) || 10000;
+            state.settings.riskPerTrade = parseFloat(document.getElementById('setting-risk').value) || 1;
+            state.settings.telegramToken = document.getElementById('setting-telegram-token').value.trim();
+            state.settings.telegramChatId = document.getElementById('setting-telegram-chat').value.trim();
+            state.settings.apiKey = document.getElementById('setting-apikey').value.trim();
+            
+            // If user provided key, we could switch but for now keep sim (user can enhance later)
+            if (state.settings.apiKey) {
+                document.getElementById('connection-status').innerHTML = 'LIVE READY';
+                document.getElementById('connection-status').className = 'font-medium text-amber-400';
+            }
+            
+            saveState();
+            hideSettingsModal();
+            showToast('Settings saved successfully', 'success');
+            
+            // Re-render in case capital changed
+            document.getElementById('balance-display').textContent = '$' + state.balance.toLocaleString('en-US', {minimumFractionDigits: 2});
+        }
+
+        // ==================== UTILS ====================
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `fixed bottom-5 right-5 px-5 py-3 rounded-2xl shadow-xl text-sm flex items-center gap-x-3 z-[200] ${type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-red-600' : 'bg-zinc-700'}`;
+            toast.innerHTML = `
+                <div>${message}</div>
+            `;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.transition = 'all 0.3s ease';
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 200);
+            }, 2800);
+        }
+
+        function updateAutoTradeToggle() {
+            const toggle = document.getElementById('auto-trade-toggle');
+            toggle.addEventListener('change', function() {
+                state.settings.autoTrade = this.checked;
+                saveState();
+                
+                if (this.checked) {
+                    showToast('Auto trading enabled. Agent will enter high-confluence setups.', 'success');
+                } else {
+                    showToast('Auto trading disabled. Use manual buttons only.', 'info');
+                }
+            });
+        }
+
+        // ==================== INITIALIZATION ====================
+        function initializeApp() {
+            loadState();
+            
+            // Initial UI
+            document.getElementById('balance-display').textContent = '$' + state.balance.toLocaleString('en-US', {minimumFractionDigits: 2});
+            
+            // Seed some demo trades if none exist
+            if (state.tradeHistory.length === 0) {
+                // Add 4-5 sample past trades for nice demo
+                const demoTrades = [
+                    {id:1, entryTime: Date.now()-1000*60*180, exitTime: Date.now()-1000*60*140, type:'LONG', entry:2642.5, exit:2668.9, pnl: 184.5, rMultiple:2.1, reason:'Take Profit Hit', confidence:81},
+                    {id:2, entryTime: Date.now()-1000*60*95, exitTime: Date.now()-1000*60*70, type:'LONG', entry:2659.2, exit:2651.0, pnl: -58.2, rMultiple:-0.9, reason:'Stop Loss Hit', confidence:76},
+                    {id:3, entryTime: Date.now()-1000*60*55, exitTime: Date.now()-1000*60*20, type:'SHORT', entry:2671.8, exit:2648.4, pnl: 132.8, rMultiple:1.8, reason:'Waterfall Signal', confidence:79},
+                ];
+                state.tradeHistory = demoTrades;
+                state.balance = 10000 + demoTrades.reduce((s,t)=>s+t.pnl,0);
+                state.todayPnL = 142.8;
+            }
+            
+            // Init chart
+            initPriceChart();
+            
+            // First full UI update
+            updateUI();
+            
+            // Auto trade toggle listener
+            updateAutoTradeToggle();
+            
+            // Start simulation loop (every 1.4 seconds for smooth feel)
+            if (state.simulationInterval) clearInterval(state.simulationInterval);
+            state.simulationInterval = setInterval(() => {
+                updateSimulation();
+            }, 1400);
+            
+            // Initial timeframe highlight
+            document.getElementById('tf-5m').classList.add('bg-zinc-800', 'text-white');
+            
+            // Keyboard shortcuts hint
+            console.log('%c[GoldForge] Keyboard: Press "L" for manual LONG, "S" for SHORT, "C" to close position', 'color:#52525b');
+            
+            // Bonus: keyboard shortcuts
+            document.addEventListener('keydown', function(e) {
+                if (e.key.toLowerCase() === 'l' && !state.openPosition) manualEnter('LONG');
+                if (e.key.toLowerCase() === 's' && !state.openPosition) manualEnter('SHORT');
+                if (e.key.toLowerCase() === 'c' && state.openPosition) closePosition();
+            });
+            
+            // Welcome toast
+            setTimeout(() => {
+                if (state.tradeHistory.length > 3) {
+                    showToast('Welcome back. Agent is monitoring live market conditions.', 'info');
+                }
+            }, 2200);
+            
+            // Make sure everything is saved
+            saveState();
+            
+            console.log('%c[GoldForge DualBrain] Real-time Gold Trading Agent initialized successfully.', 'color:#f4d35e');
+        }
+        
+        // Boot the application
+        window.onload = initializeApp;
+    </script>
+</body>
+</html>
