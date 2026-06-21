@@ -1,6 +1,0 @@
-{
-  "name": "XAUUSD Autonomous Gold Trading Bot Cockpit",
-  "description": "An autonomous gold (XAU/USD) trading engine and multi-brain fusion dashboard featuring high-speed market simulation, decision analysis checklist, risk controls, and automated trade execution.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
