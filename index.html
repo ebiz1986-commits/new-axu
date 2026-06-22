@@ -417,6 +417,14 @@
                                 <i class="fa-solid fa-bolt-lightning"></i>
                                 <span>BEST MOMENT TO ENTER</span>
                             </div>
+                            
+                            <!-- Higher Timeframe Bias -->
+                            <div id="htf-bias-badge" 
+                                 class="hidden items-center gap-x-1.5 text-xs px-3 py-1 bg-zinc-700 text-zinc-300 rounded-2xl">
+                                <i class="fa-solid fa-chart-line"></i>
+                                <span id="htf-bias-text">HTF: NEUTRAL</span>
+                            </div>
+                            
                             <div id="brain3-badge" onclick="showBrain3Reason()" 
                                  class="hidden cursor-pointer items-center gap-x-1.5 text-xs px-3 py-1 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 rounded-2xl transition-colors">
                                 <i class="fa-solid fa-robot"></i>
@@ -1387,6 +1395,43 @@
                 positionMessage.classList.add('hidden');
             }
             
+            // Show Higher Timeframe Bias + EMA Values
+            const htfBadge = document.getElementById('htf-bias-badge');
+            const htfText = document.getElementById('htf-bias-text');
+            const htfEmaValues = document.getElementById('htf-ema-values');
+            
+            const htBias = getHigherTimeframeBias(data);
+            
+            if (htfBadge && htfText) {
+                htfBadge.classList.remove('hidden');
+                
+                if (htBias === 'BULLISH') {
+                    htfBadge.className = 'items-center gap-x-1.5 text-xs px-3 py-1 bg-emerald-500/10 text-emerald-400 rounded-2xl';
+                    htfText.innerHTML = 'HTF: BULLISH ↑';
+                } else if (htBias === 'BEARISH') {
+                    htfBadge.className = 'items-center gap-x-1.5 text-xs px-3 py-1 bg-red-500/10 text-red-400 rounded-2xl';
+                    htfText.innerHTML = 'HTF: BEARISH ↓';
+                } else {
+                    htfBadge.className = 'items-center gap-x-1.5 text-xs px-3 py-1 bg-zinc-700 text-zinc-300 rounded-2xl';
+                    htfText.innerHTML = 'HTF: NEUTRAL';
+                }
+            }
+            
+            // Show exact EMA values used for HTF bias
+            if (htfEmaValues && data.length >= 50) {
+                htfEmaValues.classList.remove('hidden');
+                const ema21Arr = calculateEMA(data, 21);
+                const ema50Arr = calculateEMA(data, 50);
+                
+                if (ema21Arr.length > 0 && ema50Arr.length > 0) {
+                    const ema21 = ema21Arr[ema21Arr.length - 1];
+                    const ema50 = ema50Arr[ema50Arr.length - 1];
+                    htfEmaValues.innerHTML = `EMA21: ${ema21.toFixed(1)} | EMA50: ${ema50.toFixed(1)}`;
+                }
+            } else if (htfEmaValues) {
+                htfEmaValues.classList.add('hidden');
+            }
+            
             badge.className = badgeClass;
             entryEl.textContent = state.currentPrice.toFixed(2);
             
@@ -1583,10 +1628,13 @@
             const prompt = `You are an expert gold trader AI. Analyze this XAU/USD market data and give a clear trading decision.
 
 Current Price: ${marketSnapshot.price}
-Recent Trend: ${marketSnapshot.trend}
+Recent Trend (5m): ${marketSnapshot.trend}
+Higher Timeframe Bias: ${marketSnapshot.higherTF || 'NEUTRAL'}
 RSI: ${marketSnapshot.rsi}
 Technical Signal: ${marketSnapshot.techSignal} (Confidence: ${marketSnapshot.techConf}%)
 Pattern Signal: ${marketSnapshot.patternSignal} (Confidence: ${marketSnapshot.patternConf}%)
+
+Important: Respect the Higher Timeframe Bias. Do not fight the higher timeframe trend unless there is very strong evidence.
 
 Give your answer in this exact format:
 DECISION: BUY or SELL or HOLD
@@ -1652,18 +1700,33 @@ Be strict. Only give BUY or SELL if you have strong conviction.`;
             
             // Enforce single trade rule
             if (state.openPosition) {
-                showToast('Only one trade at a time is allowed.', 'error');
+                const reason = 'You already have an open position. Only one trade allowed at a time.';
+                state.lastBlockReason = reason;
+                showToast(reason, 'error');
                 return;
             }
             
             // Check daily risk limits
             const limitCheck = checkDailyLimits();
             if (!limitCheck.allowed) {
+                state.lastBlockReason = limitCheck.reason;
                 showToast(limitCheck.reason, 'error');
                 return;
             }
             
             const type = consensus.signal === 'BUY' ? 'LONG' : 'SHORT';
+            
+            // Higher Timeframe Bias Filter + Strong Confirmation
+            const htBias = getHigherTimeframeBias(data);
+            
+            // Block if HTF bias conflicts with trade direction
+            if ((type === 'LONG' && htBias === 'BEARISH') || (type === 'SHORT' && htBias === 'BULLISH')) {
+                const reason = `Higher Timeframe is ${htBias} while trying to go ${type}.`;
+                state.lastBlockReason = reason;
+                showToast(reason, 'error');
+                return;
+            }
+            
             const entry = state.currentPrice;
             
             // === BRAIN 3 (LLM Confirmation) ===
@@ -1674,6 +1737,7 @@ Be strict. Only give BUY or SELL if you have strong conviction.`;
                 const snapshot = {
                     price: entry.toFixed(2),
                     trend: brain1.ema9 > brain1.ema21 ? 'Bullish' : 'Bearish',
+                    higherTF: htBias,
                     rsi: brain1.rsi.toFixed(1),
                     techSignal: brain1.signal,
                     techConf: brain1.confidence,
@@ -1695,11 +1759,18 @@ Be strict. Only give BUY or SELL if you have strong conviction.`;
                 if (badge && text) {
                     badge.classList.remove('hidden');
                     text.innerHTML = `Brain 3: ${llmDecision.decision} (${llmDecision.confidence}%)`;
-                    state.lastLLMResult = llmDecision; // ensure stored
+                    state.lastLLMResult = llmDecision;
                 }
                 
-                if (llmDecision.decision !== type && llmDecision.confidence > 68) {
-                    showToast(`Brain 3 rejected ${type} signal`, 'error');
+                // Strong Confirmation: HTF + Brain 3 + Technical must align
+                const htfAgrees = (type === 'LONG' && htBias !== 'BEARISH') || (type === 'SHORT' && htBias !== 'BULLISH');
+                const brain3Agrees = llmDecision.decision === type || llmDecision.decision === 'HOLD';
+                
+                if (!htfAgrees) {
+                    showToast('Higher Timeframe bias does not support this trade.', 'error');
+                    shouldSend = false;
+                } else if (!brain3Agrees && llmDecision.confidence > 65) {
+                    showToast(`Brain 3 rejected ${type} (suggested ${llmDecision.decision})`, 'error');
                     shouldSend = false;
                 } else {
                     finalConfidence = Math.min(95, Math.round((consensus.confidence + llmDecision.confidence) / 2));
@@ -1811,10 +1882,10 @@ Be strict. Only give BUY or SELL if you have strong conviction.`;
                             label: 'Price',
                             data: [],
                             borderColor: '#22c55e',
-                            borderWidth: 2,
-                            tension: 0.1,
+                            borderWidth: 2.5,
+                            tension: 0.05,
                             pointRadius: 0,
-                            pointHoverRadius: 4,
+                            pointHoverRadius: 5,
                             yAxisID: 'y',
                             segment: {
                                 borderColor: ctx => ctx.p0.parsed.y > ctx.p1.parsed.y ? '#ef4444' : '#22c55e'
@@ -1823,20 +1894,20 @@ Be strict. Only give BUY or SELL if you have strong conviction.`;
                         {
                             label: 'EMA 9',
                             data: [],
-                            borderColor: '#3b82f6',
+                            borderColor: '#60a5fa',
                             borderWidth: 1.5,
-                            borderDash: [2, 2],
-                            tension: 0.2,
+                            borderDash: [2, 1],
+                            tension: 0.15,
                             pointRadius: 0,
                             yAxisID: 'y'
                         },
                         {
                             label: 'EMA 21',
                             data: [],
-                            borderColor: '#a855f7',
+                            borderColor: '#c084fc',
                             borderWidth: 1.5,
-                            borderDash: [3, 3],
-                            tension: 0.2,
+                            borderDash: [4, 2],
+                            tension: 0.15,
                             pointRadius: 0,
                             yAxisID: 'y'
                         }
@@ -1845,31 +1916,34 @@ Be strict. Only give BUY or SELL if you have strong conviction.`;
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    animation: { duration: 300 },
+                    animation: { duration: 250 },
                     plugins: {
                         legend: { display: false },
                         tooltip: { 
                             mode: 'index', 
                             intersect: false, 
                             displayColors: false,
-                            backgroundColor: '#18181b',
+                            backgroundColor: '#111113',
                             borderColor: '#3f3f46',
-                            borderWidth: 1
+                            borderWidth: 1,
+                            titleFont: { size: 11 },
+                            bodyFont: { size: 12 }
                         }
                     },
                     scales: {
                         x: {
-                            grid: { color: '#27272a', lineWidth: 0.5 },
-                            ticks: { color: '#71717a', font: { size: 10 }, maxTicksLimit: 7 }
+                            grid: { color: '#27272a', lineWidth: 0.4 },
+                            ticks: { color: '#71717a', font: { size: 10 }, maxTicksLimit: 6 }
                         },
                         y: {
-                            grid: { color: '#27272a', lineWidth: 0.5 },
-                            ticks: { color: '#71717a', font: { size: 11 }, callback: v => v.toFixed(0) }
+                            grid: { color: '#27272a', lineWidth: 0.4 },
+                            ticks: { color: '#a1a1aa', font: { size: 11 }, callback: v => v.toFixed(0) }
                         }
                     },
                     interaction: { intersect: false, mode: 'nearest' },
                     elements: {
-                        line: { borderJoinStyle: 'round' }
+                        line: { borderJoinStyle: 'round' },
+                        point: { hitRadius: 10 }
                     }
                 }
             });
@@ -2233,7 +2307,6 @@ Be strict. Only give BUY or SELL if you have strong conviction.`;
             const result = state.lastLLMResult;
             const msg = `Brain 3 Decision: <b>${result.decision}</b> (${result.confidence}%)\n\nReason: ${result.reason}`;
             
-            // Show in a nice toast
             const toast = document.createElement('div');
             toast.className = `fixed bottom-5 left-1/2 -translate-x-1/2 max-w-md px-5 py-4 rounded-2xl shadow-xl text-sm bg-zinc-900 border border-purple-500/30 z-[200]`;
             toast.innerHTML = `
@@ -2252,6 +2325,75 @@ Be strict. Only give BUY or SELL if you have strong conviction.`;
                 toast.style.opacity = '0';
                 setTimeout(() => toast.remove(), 200);
             }, 4500);
+        }
+
+        function showLastBlockReason() {
+            if (!state.lastBlockReason) {
+                showToast('No recent block reason', 'info');
+                return;
+            }
+            
+            const toast = document.createElement('div');
+            toast.className = `fixed bottom-5 left-1/2 -translate-x-1/2 max-w-md px-5 py-4 rounded-2xl shadow-xl text-sm bg-zinc-900 border border-red-500/30 z-[200]`;
+            toast.innerHTML = `
+                <div class="flex items-start gap-x-3">
+                    <i class="fa-solid fa-exclamation-triangle text-red-400 mt-1"></i>
+                    <div class="flex-1 text-zinc-200">
+                        <div class="font-semibold mb-1 text-red-400">Last Trade Blocked</div>
+                        <div class="text-xs">${state.lastBlockReason}</div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.transition = 'all 0.3s ease';
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 200);
+            }, 5000);
+        }
+
+        // Flash the signal badge when important change happens
+        function flashSignalBadge() {
+            const badge = document.getElementById('master-signal-badge');
+            if (!badge) return;
+            
+            badge.style.transition = 'all 0.1s ease';
+            badge.style.boxShadow = '0 0 0 4px rgba(245, 158, 11, 0.6)';
+            
+            setTimeout(() => {
+                badge.style.boxShadow = '0 10px 15px -3px rgb(0 0 0 / 0.1)';
+            }, 600);
+        }
+
+        // Play simple alert sound using Web Audio API
+        function playAlertSound() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.value = 880; // A5 note
+                gainNode.gain.value = 0.3;
+                
+                const filter = audioContext.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 1200;
+                
+                oscillator.connect(filter);
+                filter.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.start();
+                
+                setTimeout(() => {
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.4);
+                    setTimeout(() => oscillator.stop(), 500);
+                }, 150);
+            } catch (e) {
+                // Sound failed silently (some browsers block autoplay)
+            }
         }
 
         function showToast(message, type = 'success') {
