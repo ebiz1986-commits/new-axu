@@ -2181,27 +2181,46 @@ Be strict. Only give BUY or SELL if you have strong conviction.`;
         }
 
         function saveSettings() {
-            state.settings.startingCapital = parseFloat(document.getElementById('setting-capital').value) || 100;
-            state.settings.riskPerTrade = parseFloat(document.getElementById('setting-risk').value) || 2;
-            state.settings.telegramToken = document.getElementById('setting-telegram-token').value.trim();
-            state.settings.telegramChatId = document.getElementById('setting-telegram-chat').value.trim();
-            state.settings.apiKey = document.getElementById('setting-apikey').value.trim();
-            state.settings.groqApiKey = document.getElementById('setting-groq-key').value.trim();
-            state.settings.brain3Enabled = document.getElementById('setting-brain3-toggle').checked;
-            state.settings.maxDailyLossPercent = parseFloat(document.getElementById('setting-max-daily-loss').value) || 8;
-            state.settings.maxTradesPerDay = parseInt(document.getElementById('setting-max-trades-day').value) || 5;
-            
-            if (state.settings.apiKey) {
-                document.getElementById('connection-status').innerHTML = 'LIVE READY';
-                document.getElementById('connection-status').className = 'font-medium text-amber-400';
+            try {
+                state.settings.startingCapital = parseFloat(document.getElementById('setting-capital').value) || 100;
+                state.settings.riskPerTrade = parseFloat(document.getElementById('setting-risk').value) || 2;
+                state.settings.telegramToken = document.getElementById('setting-telegram-token').value.trim();
+                state.settings.telegramChatId = document.getElementById('setting-telegram-chat').value.trim();
+                state.settings.apiKey = document.getElementById('setting-apikey').value.trim();
+                state.settings.groqApiKey = document.getElementById('setting-groq-key').value.trim();
+                
+                // Safely handle optional fields
+                const brain3Toggle = document.getElementById('setting-brain3-toggle');
+                if (brain3Toggle) state.settings.brain3Enabled = brain3Toggle.checked;
+                
+                const maxDailyLoss = document.getElementById('setting-max-daily-loss');
+                if (maxDailyLoss) state.settings.maxDailyLossPercent = parseFloat(maxDailyLoss.value) || 8;
+                
+                const maxTradesDay = document.getElementById('setting-max-trades-day');
+                if (maxTradesDay) state.settings.maxTradesPerDay = parseInt(maxTradesDay.value) || 5;
+                
+                if (state.settings.apiKey) {
+                    const statusEl = document.getElementById('connection-status');
+                    if (statusEl) {
+                        statusEl.innerHTML = 'LIVE READY';
+                        statusEl.className = 'font-medium text-amber-400';
+                    }
+                }
+                
+                saveState();
+                hideSettingsModal();
+                showToast('Settings saved successfully', 'success');
+                
+                // Re-render balance
+                const balanceEl = document.getElementById('balance-display');
+                if (balanceEl) {
+                    balanceEl.textContent = '$' + state.balance.toLocaleString('en-US', {minimumFractionDigits: 2});
+                }
+                
+            } catch (error) {
+                console.error('Save settings error:', error);
+                showToast('Error saving settings. Check console for details.', 'error');
             }
-            
-            saveState();
-            hideSettingsModal();
-            showToast('Settings saved successfully', 'success');
-            
-            // Re-render in case capital changed
-            document.getElementById('balance-display').textContent = '$' + state.balance.toLocaleString('en-US', {minimumFractionDigits: 2});
         }
 
         // ==================== UTILS ====================
