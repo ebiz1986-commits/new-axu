@@ -1873,7 +1873,7 @@ Be strict. Only give BUY or SELL if you have strong conviction.`;
         let tvCandleSeries = null;
 
         function initPriceChart() {
-            const ctx = document.getElementById('price-chart');
+            const container = document.getElementById('tv-chart-container');
             
             priceChart = new Chart(ctx, {
                 type: 'line',
