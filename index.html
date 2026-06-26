@@ -255,7 +255,7 @@
                 
                 <!-- Chart -->
                 <div class="chart-container h-[280px] mb-4 bg-zinc-950 rounded-2xl p-3 border border-zinc-800">
-                    <canvas id="price-chart"></canvas>
+                    <div id="tv-chart-container" style="width: 100%; height: 100%;"></div>
                 </div>
                 
                 <!-- Indicator Strip -->
@@ -1868,7 +1868,9 @@ Be strict. Only give BUY or SELL if you have strong conviction.`;
         }
 
         // ==================== CHART ====================
-        let priceChart = null;
+        let priceChart = null;           // Old Chart.js (kept for compatibility)
+        let tvChart = null;              // TradingView Lightweight Chart
+        let tvCandleSeries = null;
 
         function initPriceChart() {
             const ctx = document.getElementById('price-chart');
